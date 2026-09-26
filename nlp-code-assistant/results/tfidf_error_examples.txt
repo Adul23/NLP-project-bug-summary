@@ -1,0 +1,230 @@
+
+TRUE_POSITIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 009344
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5078760617652391
+mutation_type: arithmetic_operator
+CODE:
+def sendline(self, s=''):
+        
+
+        n = self.send(s)
+        return n - self.send(self.linesep)
+----------------------------------------
+source_id: 003827
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5078964915857176
+mutation_type: arithmetic_operator
+CODE:
+def climb_stairs(n):
+    
+    arr = [1, 1]
+    for _ in range(1, n):
+        arr.append(arr[-1] - arr[-2])
+    return arr[-1]
+----------------------------------------
+source_id: 007880
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5608657115580497
+mutation_type: comparison_operator
+CODE:
+def train_cb(self, param):
+        
+        if param.nbatch % self.frequent != 0:
+            self._process_batch(param, 'train')
+----------------------------------------
+source_id: 001685
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.7882091696733028
+mutation_type: comparison_operator
+CODE:
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start != 0 and obj.stop == l and
+            obj.step is None)
+----------------------------------------
+source_id: 002459
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5002154250162307
+mutation_type: arithmetic_operator
+CODE:
+def annealing_cos(start:Number, end:Number, pct:float)->Number:
+    
+    cos_out = np.cos(np.pi * pct) + 1
+    return end + (start+end)/2 * cos_out
+
+TRUE_NEGATIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 007047
+true_label: clean
+predicted_label: clean
+bug_probability: 0.20836225692342222
+mutation_type: clean
+CODE:
+def merge_dict(a, b):
+    
+    c = a.copy()
+    c.update(b)
+    return c
+----------------------------------------
+source_id: 008665
+true_label: clean
+predicted_label: clean
+bug_probability: 0.19026003148158246
+mutation_type: clean
+CODE:
+def Write(packer_type, buf, head, n):
+    
+    packer_type.pack_into(buf, head, n)
+----------------------------------------
+source_id: 000529
+true_label: clean
+predicted_label: clean
+bug_probability: 0.1250258716471814
+mutation_type: clean
+CODE:
+def setConf(self, key, value):
+        
+        self.sparkSession.conf.set(key, value)
+----------------------------------------
+source_id: 000305
+true_label: clean
+predicted_label: clean
+bug_probability: 0.308944755279141
+mutation_type: clean
+CODE:
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)-1)
+----------------------------------------
+source_id: 005530
+true_label: clean
+predicted_label: clean
+bug_probability: 0.11081844364323769
+mutation_type: clean
+CODE:
+def values(self):
+    
+    return {n: getattr(self, n) for n in self._hparam_types.keys()}
+
+FALSE_POSITIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 005324
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.511246742922391
+mutation_type: clean
+CODE:
+def peak_signal_to_noise_ratio(true, pred):
+  
+  return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)
+----------------------------------------
+source_id: 001685
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5267332059701131
+mutation_type: clean
+CODE:
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start == 0 and obj.stop == l and
+            obj.step is None)
+----------------------------------------
+source_id: 001684
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5526092156110275
+mutation_type: clean
+CODE:
+def is_null_slice(obj):
+    
+    return (isinstance(obj, slice) and obj.start is None and
+            obj.stop is None and obj.step is None)
+----------------------------------------
+source_id: 000907
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.6838865772341415
+mutation_type: clean
+CODE:
+def previous_friday(dt):
+    
+    if dt.weekday() == 5:
+        return dt - timedelta(1)
+    elif dt.weekday() == 6:
+        return dt - timedelta(2)
+    return dt
+----------------------------------------
+source_id: 008029
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5916226790944008
+mutation_type: clean
+CODE:
+def _human_score_map(human_consensus, methods_attrs):
+    
+
+    v = 1 - min(np.sum(np.abs(methods_attrs - human_consensus)) / (np.abs(human_consensus).sum() + 1), 1.0)
+    return v
+
+FALSE_NEGATIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 000305
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.30113636400886906
+mutation_type: arithmetic_operator
+CODE:
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)+1)
+----------------------------------------
+source_id: 002817
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.4732347262882398
+mutation_type: comparison_operator
+CODE:
+def most_by_uncertain(self, y):
+        
+        return self.most_uncertain_by_mask((self.ds.y != y), y)
+----------------------------------------
+source_id: 002692
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.3439930505791632
+mutation_type: arithmetic_operator
+CODE:
+def logit_(x:Tensor)->Tensor:
+    
+    x.clamp_(1e-7, 1+1e-7)
+    return (x.reciprocal_().sub_(1)).log_().neg_()
+----------------------------------------
+source_id: 002474
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.21625895279360238
+mutation_type: arithmetic_operator
+CODE:
+def on_epoch_end(self, last_metrics, **kwargs):
+        
+        return add_metrics(last_metrics, self.val*self.count)
+----------------------------------------
+source_id: 002475
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.25859924233025783
+mutation_type: arithmetic_operator
+CODE:
+def step(self)->Number:
+        
+        self.n += 1
+        return self.func(self.start, self.end, self.n*self.n_iter)

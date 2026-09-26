@@ -1,0 +1,366 @@
+{
+  "model": "TF-IDF + Logistic Regression",
+  "random_state": 42,
+  "ngram_range": [
+    2,
+    4
+  ],
+  "accuracy": 0.6863930885529158,
+  "bug_precision": 0.5421002838221382,
+  "bug_recall": 0.7030674846625767,
+  "bug_f1": 0.6121794871794872,
+  "dataset": {
+    "rows": 15304,
+    "unique_source_ids": 10000,
+    "clean_samples": 10000,
+    "buggy_samples": 5304,
+    "duplicates_removed": 0,
+    "mutation_distribution": {
+      "clean": 10000,
+      "comparison_operator": 2131,
+      "arithmetic_operator": 1932,
+      "boolean_operator": 1241
+    }
+  },
+  "input_sha256": "6e9453faff38fffe80e55ba88bfcaa20f9a1404ea6eae683662d9463796bfbeb",
+  "splits": {
+    "train": {
+      "rows": 10703,
+      "unique_source_ids": 7000
+    },
+    "validation": {
+      "rows": 2286,
+      "unique_source_ids": 1500
+    },
+    "test": {
+      "rows": 2315,
+      "unique_source_ids": 1500
+    }
+  },
+  "source_id_overlap": {
+    "train/validation": 0,
+    "train/test": 0,
+    "validation/test": 0
+  },
+  "comparison": [
+    {
+      "ngram_range": [
+        2,
+        4
+      ],
+      "precision": 0.5349301397205589,
+      "recall": 0.6819338422391857,
+      "f1": 0.5995525727069351
+    },
+    {
+      "ngram_range": [
+        3,
+        5
+      ],
+      "precision": 0.5178389398572885,
+      "recall": 0.6463104325699746,
+      "f1": 0.5749858517260894
+    },
+    {
+      "ngram_range": [
+        3,
+        6
+      ],
+      "precision": 0.5160642570281124,
+      "recall": 0.6539440203562341,
+      "f1": 0.5768799102132436
+    }
+  ],
+  "selection": "Highest validation buggy F1; ties use first candidate; no refit",
+  "vectorizer": {
+    "analyzer": "char",
+    "max_features": 30000,
+    "lowercase": false,
+    "sublinear_tf": true,
+    "fitted_features": 30000
+  },
+  "classifier": {
+    "max_iter": 2000,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "validation": {
+    "accuracy": 0.6867891513560805,
+    "bug_precision": 0.5349301397205589,
+    "bug_recall": 0.6819338422391857,
+    "bug_f1": 0.5995525727069351,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8052959501557633,
+        "recall": 0.6893333333333334,
+        "f1-score": 0.742816091954023,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5349301397205589,
+        "recall": 0.6819338422391857,
+        "f1-score": 0.5995525727069351,
+        "support": 786.0
+      },
+      "accuracy": 0.6867891513560805,
+      "macro avg": {
+        "precision": 0.6701130449381612,
+        "recall": 0.6856335877862596,
+        "f1-score": 0.671184332330479,
+        "support": 2286.0
+      },
+      "weighted avg": {
+        "precision": 0.7123355271452336,
+        "recall": 0.6867891513560805,
+        "f1-score": 0.6935575065961003,
+        "support": 2286.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1034,
+        466
+      ],
+      [
+        250,
+        536
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.6863930885529158,
+    "bug_precision": 0.5421002838221382,
+    "bug_recall": 0.7030674846625767,
+    "bug_f1": 0.6121794871794872,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8076311605723371,
+        "recall": 0.6773333333333333,
+        "f1-score": 0.7367657722987673,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5421002838221382,
+        "recall": 0.7030674846625767,
+        "f1-score": 0.6121794871794872,
+        "support": 815.0
+      },
+      "accuracy": 0.6863930885529158,
+      "macro avg": {
+        "precision": 0.6748657221972376,
+        "recall": 0.690200408997955,
+        "f1-score": 0.6744726297391272,
+        "support": 2315.0
+      },
+      "weighted avg": {
+        "precision": 0.7141505279367378,
+        "recall": 0.6863930885529158,
+        "f1-score": 0.6929049419004031,
+        "support": 2315.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1016,
+        484
+      ],
+      [
+        242,
+        573
+      ]
+    ]
+  },
+  "mutation_analysis": {
+    "comparison_operator": {
+      "samples": 336,
+      "correctly_detected": 272,
+      "recall": 0.8095238095238095
+    },
+    "arithmetic_operator": {
+      "samples": 274,
+      "correctly_detected": 184,
+      "recall": 0.6715328467153284
+    },
+    "boolean_operator": {
+      "samples": 205,
+      "correctly_detected": 117,
+      "recall": 0.5707317073170731
+    }
+  },
+  "error_examples": {
+    "true_positives": [
+      {
+        "source_id": "009344",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5078760617652391,
+        "mutation_type": "arithmetic_operator",
+        "code": "def sendline(self, s=''):\n        \n\n        n = self.send(s)\n        return n - self.send(self.linesep)"
+      },
+      {
+        "source_id": "003827",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5078964915857176,
+        "mutation_type": "arithmetic_operator",
+        "code": "def climb_stairs(n):\n    \n    arr = [1, 1]\n    for _ in range(1, n):\n        arr.append(arr[-1] - arr[-2])\n    return arr[-1]"
+      },
+      {
+        "source_id": "007880",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5608657115580497,
+        "mutation_type": "comparison_operator",
+        "code": "def train_cb(self, param):\n        \n        if param.nbatch % self.frequent != 0:\n            self._process_batch(param, 'train')"
+      },
+      {
+        "source_id": "001685",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.7882091696733028,
+        "mutation_type": "comparison_operator",
+        "code": "def is_full_slice(obj, l):\n    \n    return (isinstance(obj, slice) and obj.start != 0 and obj.stop == l and\n            obj.step is None)"
+      },
+      {
+        "source_id": "002459",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5002154250162307,
+        "mutation_type": "arithmetic_operator",
+        "code": "def annealing_cos(start:Number, end:Number, pct:float)->Number:\n    \n    cos_out = np.cos(np.pi * pct) + 1\n    return end + (start+end)/2 * cos_out"
+      }
+    ],
+    "true_negatives": [
+      {
+        "source_id": "007047",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.20836225692342222,
+        "mutation_type": "clean",
+        "code": "def merge_dict(a, b):\n    \n    c = a.copy()\n    c.update(b)\n    return c"
+      },
+      {
+        "source_id": "008665",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.19026003148158246,
+        "mutation_type": "clean",
+        "code": "def Write(packer_type, buf, head, n):\n    \n    packer_type.pack_into(buf, head, n)"
+      },
+      {
+        "source_id": "000529",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.1250258716471814,
+        "mutation_type": "clean",
+        "code": "def setConf(self, key, value):\n        \n        self.sparkSession.conf.set(key, value)"
+      },
+      {
+        "source_id": "000305",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.308944755279141,
+        "mutation_type": "clean",
+        "code": "def heappush(heap, item):\n    \n    heap.append(item)\n    _siftdown(heap, 0, len(heap)-1)"
+      },
+      {
+        "source_id": "005530",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.11081844364323769,
+        "mutation_type": "clean",
+        "code": "def values(self):\n    \n    return {n: getattr(self, n) for n in self._hparam_types.keys()}"
+      }
+    ],
+    "false_positives": [
+      {
+        "source_id": "005324",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.511246742922391,
+        "mutation_type": "clean",
+        "code": "def peak_signal_to_noise_ratio(true, pred):\n  \n  return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)"
+      },
+      {
+        "source_id": "001685",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5267332059701131,
+        "mutation_type": "clean",
+        "code": "def is_full_slice(obj, l):\n    \n    return (isinstance(obj, slice) and obj.start == 0 and obj.stop == l and\n            obj.step is None)"
+      },
+      {
+        "source_id": "001684",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5526092156110275,
+        "mutation_type": "clean",
+        "code": "def is_null_slice(obj):\n    \n    return (isinstance(obj, slice) and obj.start is None and\n            obj.stop is None and obj.step is None)"
+      },
+      {
+        "source_id": "000907",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.6838865772341415,
+        "mutation_type": "clean",
+        "code": "def previous_friday(dt):\n    \n    if dt.weekday() == 5:\n        return dt - timedelta(1)\n    elif dt.weekday() == 6:\n        return dt - timedelta(2)\n    return dt"
+      },
+      {
+        "source_id": "008029",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5916226790944008,
+        "mutation_type": "clean",
+        "code": "def _human_score_map(human_consensus, methods_attrs):\n    \n\n    v = 1 - min(np.sum(np.abs(methods_attrs - human_consensus)) / (np.abs(human_consensus).sum() + 1), 1.0)\n    return v"
+      }
+    ],
+    "false_negatives": [
+      {
+        "source_id": "000305",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.30113636400886906,
+        "mutation_type": "arithmetic_operator",
+        "code": "def heappush(heap, item):\n    \n    heap.append(item)\n    _siftdown(heap, 0, len(heap)+1)"
+      },
+      {
+        "source_id": "002817",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.4732347262882398,
+        "mutation_type": "comparison_operator",
+        "code": "def most_by_uncertain(self, y):\n        \n        return self.most_uncertain_by_mask((self.ds.y != y), y)"
+      },
+      {
+        "source_id": "002692",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.3439930505791632,
+        "mutation_type": "arithmetic_operator",
+        "code": "def logit_(x:Tensor)->Tensor:\n    \n    x.clamp_(1e-7, 1+1e-7)\n    return (x.reciprocal_().sub_(1)).log_().neg_()"
+      },
+      {
+        "source_id": "002474",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.21625895279360238,
+        "mutation_type": "arithmetic_operator",
+        "code": "def on_epoch_end(self, last_metrics, **kwargs):\n        \n        return add_metrics(last_metrics, self.val*self.count)"
+      },
+      {
+        "source_id": "002475",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.25859924233025783,
+        "mutation_type": "arithmetic_operator",
+        "code": "def step(self)->Number:\n        \n        self.n += 1\n        return self.func(self.start, self.end, self.n*self.n_iter)"
+      }
+    ]
+  },
+  "packages": {
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.3",
+    "joblib": "1.6.0"
+  }
+}
