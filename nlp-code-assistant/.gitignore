@@ -11,3 +11,7 @@ models/**
 !models/.gitkeep
 
 .venv-baseline/
+
+.DS_Store
+.ipynb_checkpoints/
+checkpoints/
