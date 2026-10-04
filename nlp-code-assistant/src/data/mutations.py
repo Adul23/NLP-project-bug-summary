@@ -1,24 +1,34 @@
 """One AST operator mutation per function, with source-preserving rendering."""
+
 from __future__ import annotations
 
 import ast
-from dataclasses import dataclass
 import io
 import random
 import tokenize
+from dataclasses import dataclass
 
 if __package__:
     from .preprocess import is_function, parse_python
 else:
     from preprocess import is_function, parse_python
 
-MUTATION_TYPES = ('comparison_operator', 'arithmetic_operator', 'boolean_operator')
-COMPARISONS = {ast.Eq: (ast.NotEq, '==', '!='), ast.NotEq: (ast.Eq, '!=', '=='),
-               ast.Gt: (ast.Lt, '>', '<'), ast.Lt: (ast.Gt, '<', '>'),
-               ast.GtE: (ast.Gt, '>=', '>'), ast.LtE: (ast.Lt, '<=', '<')}
-ARITHMETIC = {ast.Add: (ast.Sub, '+', '-'), ast.Sub: (ast.Add, '-', '+'),
-              ast.Mult: (ast.Div, '*', '/'), ast.Div: (ast.Mult, '/', '*')}
-BOOLEANS = {ast.And: (ast.Or, 'and', 'or'), ast.Or: (ast.And, 'or', 'and')}
+MUTATION_TYPES = ("comparison_operator", "arithmetic_operator", "boolean_operator")
+COMPARISONS = {
+    ast.Eq: (ast.NotEq, "==", "!="),
+    ast.NotEq: (ast.Eq, "!=", "=="),
+    ast.Gt: (ast.Lt, ">", "<"),
+    ast.Lt: (ast.Gt, "<", ">"),
+    ast.GtE: (ast.Gt, ">=", ">"),
+    ast.LtE: (ast.Lt, "<=", "<"),
+}
+ARITHMETIC = {
+    ast.Add: (ast.Sub, "+", "-"),
+    ast.Sub: (ast.Add, "-", "+"),
+    ast.Mult: (ast.Div, "*", "/"),
+    ast.Div: (ast.Mult, "/", "*"),
+}
+BOOLEANS = {ast.And: (ast.Or, "and", "or"), ast.Or: (ast.And, "or", "and")}
 
 
 @dataclass(frozen=True)
@@ -67,15 +77,25 @@ class _BodyVisitor(ast.NodeVisitor):
         for index, operator in enumerate(node.ops):
             if type(operator) in COMPARISONS:
                 replacement, old, new = COMPARISONS[type(operator)]
-                self.groups['comparison_operator'].append(
-                    _Candidate(node, index, replacement, old, new, operands[index], operands[index + 1]))
+                self.groups["comparison_operator"].append(
+                    _Candidate(
+                        node,
+                        index,
+                        replacement,
+                        old,
+                        new,
+                        operands[index],
+                        operands[index + 1],
+                    )
+                )
         self.generic_visit(node)
 
     def visit_BinOp(self, node):
         if type(node.op) in ARITHMETIC:
             replacement, old, new = ARITHMETIC[type(node.op)]
-            self.groups['arithmetic_operator'].append(
-                _Candidate(node, None, replacement, old, new, node.left, node.right))
+            self.groups["arithmetic_operator"].append(
+                _Candidate(node, None, replacement, old, new, node.left, node.right)
+            )
         self.generic_visit(node)
 
     def visit_BoolOp(self, node):
@@ -83,8 +103,9 @@ class _BodyVisitor(ast.NodeVisitor):
         # Only binary nodes satisfy the strict one-operator-per-sample rule.
         if len(node.values) == 2:
             replacement, old, new = BOOLEANS[type(node.op)]
-            self.groups['boolean_operator'].append(
-                _Candidate(node, None, replacement, old, new, *node.values))
+            self.groups["boolean_operator"].append(
+                _Candidate(node, None, replacement, old, new, *node.values)
+            )
         self.generic_visit(node)
 
 
@@ -103,23 +124,32 @@ def _render_local(code: str, candidate: _Candidate, tokens: list) -> str | None:
     lines = io.StringIO(code).readlines()
 
     def position(line: int, byte_column: int) -> tuple[int, int]:
-        return line, len(lines[line - 1].encode('utf-8')[:byte_column].decode('utf-8'))
+        return line, len(lines[line - 1].encode("utf-8")[:byte_column].decode("utf-8"))
 
     left_end = position(candidate.left.end_lineno, candidate.left.end_col_offset)
     right_start = position(candidate.right.lineno, candidate.right.col_offset)
-    matches = [token for token in tokens
-               if token.type in (tokenize.OP, tokenize.NAME) and token.string == candidate.old_text
-               and left_end <= token.start and token.end <= right_start]
+    matches = [
+        token
+        for token in tokens
+        if token.type in (tokenize.OP, tokenize.NAME)
+        and token.string == candidate.old_text
+        and left_end <= token.start
+        and token.end <= right_start
+    ]
     if len(matches) != 1:
         return None
     token = matches[0]
-    start = sum(map(len, lines[:token.start[0] - 1])) + token.start[1]
-    end = sum(map(len, lines[:token.end[0] - 1])) + token.end[1]
+    start = sum(map(len, lines[: token.start[0] - 1])) + token.start[1]
+    end = sum(map(len, lines[: token.end[0] - 1])) + token.end[1]
     return code[:start] + candidate.new_text + code[end:]
 
 
-def mutate_code(code: str, rng: random.Random, forbidden: set[str] | None = None,
-                stats: MutationStats | None = None) -> MutationResult | None:
+def mutate_code(
+    code: str,
+    rng: random.Random,
+    forbidden: set[str] | None = None,
+    stats: MutationStats | None = None,
+) -> MutationResult | None:
     """Choose a category randomly, then one valid AST-local operator substitution.
 
     Mutate AST nodes directly, unparse and reparse, then render the operator at
@@ -131,7 +161,7 @@ def mutate_code(code: str, rng: random.Random, forbidden: set[str] | None = None
     forbidden = forbidden if forbidden is not None else set()
     tree = parse_python(code)
     if not is_function(tree):
-        raise ValueError('Expected one valid standalone function')
+        raise ValueError("Expected one valid standalone function")
     visitor = _BodyVisitor()
     visitor.visit(tree)
     categories = [kind for kind, candidates in visitor.groups.items() if candidates]
@@ -149,12 +179,19 @@ def mutate_code(code: str, rng: random.Random, forbidden: set[str] | None = None
             try:
                 expected = ast.dump(tree, include_attributes=False)
                 canonical = ast.unparse(tree)
-                if ast.dump(parse_python(canonical), include_attributes=False) != expected:
+                if (
+                    ast.dump(parse_python(canonical), include_attributes=False)
+                    != expected
+                ):
                     stats.invalid_mutations_skipped += 1
                     continue
                 buggy = _render_local(code, candidate, tokens)
-                if (buggy is None or buggy == code
-                        or ast.dump(parse_python(buggy), include_attributes=False) != expected):
+                if (
+                    buggy is None
+                    or buggy == code
+                    or ast.dump(parse_python(buggy), include_attributes=False)
+                    != expected
+                ):
                     stats.invalid_mutations_skipped += 1
                     continue
                 if buggy in forbidden:
@@ -169,8 +206,8 @@ def mutate_code(code: str, rng: random.Random, forbidden: set[str] | None = None
     return None
 
 
-if __name__ == '__main__':
-    example = 'def check(x):\n    return x >= 10'
+if __name__ == "__main__":
+    example = "def check(x):\n    return x >= 10"
     result = mutate_code(example, random.Random(42))
-    print('ORIGINAL:\n' + example)
-    print('\nBUGGY:\n' + result.code)
+    print("ORIGINAL:\n" + example)
+    print("\nBUGGY:\n" + result.code)

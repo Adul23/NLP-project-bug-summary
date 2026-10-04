@@ -1,0 +1,61 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ad/nlp/nlp-code-assistant/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ad/nlp/nlp-code-assistant
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 45 items
+
+tests/test_mutations.py::MutationTests::test_no_changes_to_function_decorators_defaults_or_annotations PASSED [  2%]
+tests/test_mutations.py::MutationTests::test_no_supported_operator PASSED [  4%]
+tests/test_mutations.py::MutationTests::test_non_newline_separators_do_not_shift_operator_positions 
+tests/test_mutations.py::MutationTests::test_non_newline_separators_do_not_shift_operator_positions PASSED [  6%]
+tests/test_mutations.py::MutationTests::test_only_one_operator_changes_in_chained_comparison PASSED [  8%]
+tests/test_mutations.py::MutationTests::test_parentheses_and_operator_precedence_preserved PASSED [ 11%]
+tests/test_mutations.py::MutationTests::test_preserves_strings_comments_formatting_and_unicode PASSED [ 13%]
+tests/test_mutations.py::MutationTests::test_seed_reproducibility PASSED [ 15%]
+tests/test_mutations.py::MutationTests::test_supported_operators 
+tests/test_mutations.py::MutationTests::test_supported_operators PASSED  [ 17%]
+tests/test_pipeline.py::PipelineTests::test_all_cli_stages_and_leading_zero_roundtrip PASSED [ 20%]
+tests/test_pipeline.py::PipelineTests::test_insufficient_input_does_not_publish_output PASSED [ 22%]
+tests/test_pipeline.py::PipelineTests::test_mutation_collision_with_any_clean_function_is_skipped PASSED [ 24%]
+tests/test_pipeline.py::PipelineTests::test_pair_linkage_category_counts_and_examples PASSED [ 26%]
+tests/test_pipeline.py::PipelineTests::test_parquet_reader_stops_early_and_repeats_seed PASSED [ 28%]
+tests/test_pipeline.py::PipelineTests::test_quality_checks_reject_corrupt_rows 
+tests/test_pipeline.py::PipelineTests::test_quality_checks_reject_corrupt_rows PASSED [ 31%]
+tests/test_pipeline.py::PipelineTests::test_stream_exhaustion_and_schema_errors_fail 
+tests/test_pipeline.py::PipelineTests::test_stream_exhaustion_and_schema_errors_fail PASSED [ 33%]
+tests/test_pipeline.py::PipelineTests::test_stream_stops_at_valid_unique_target PASSED [ 35%]
+tests/test_preprocess.py::PreprocessTests::test_accepts_async_and_decorated_functions PASSED [ 37%]
+tests/test_preprocess.py::PreprocessTests::test_consecutive_docstrings_do_not_expose_a_new_docstring PASSED [ 40%]
+tests/test_preprocess.py::PreprocessTests::test_deduplication_stats_and_zero_padded_ids PASSED [ 42%]
+tests/test_preprocess.py::PreprocessTests::test_docstring_only_and_inline_docstring_remain_valid PASSED [ 44%]
+tests/test_preprocess.py::PreprocessTests::test_normalizes_without_reformatting PASSED [ 46%]
+tests/test_preprocess.py::PreprocessTests::test_rejects_empty_invalid_and_nonfunction_fragments 
+tests/test_preprocess.py::PreprocessTests::test_rejects_empty_invalid_and_nonfunction_fragments PASSED [ 48%]
+tests/test_preprocess.py::PreprocessTests::test_removes_docstrings_but_preserves_literals_and_unicode PASSED [ 51%]
+tests/test_split_dataset.py::test_source_groups_are_disjoint_complete_and_repeatable PASSED [ 53%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[label-2] PASSED [ 55%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[label-None] PASSED [ 57%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[code-] PASSED [ 60%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[code-None] PASSED [ 62%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[source_id-] PASSED [ 64%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[source_id-None] PASSED [ 66%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[mutation_type-None] PASSED [ 68%]
+tests/test_split_dataset.py::test_leaking_splits_are_rejected PASSED     [ 71%]
+tests/test_split_dataset.py::test_csv_preserves_leading_zero_source_ids PASSED [ 73%]
+tests/test_tfidf_pipeline.py::test_training_excludes_validation_text_and_saves_predictable_models PASSED [ 75%]
+tests/test_tfidf_pipeline.py::test_selection_uses_highest_validation_f1_and_first_on_ties[candidate_predictions0-winner0] PASSED [ 77%]
+tests/test_tfidf_pipeline.py::test_selection_uses_highest_validation_f1_and_first_on_ties[candidate_predictions1-winner1] PASSED [ 80%]
+tests/test_tfidf_pipeline.py::test_full_run_fits_only_train_and_evaluates_test_once PASSED [ 82%]
+tests/test_tfidf_pipeline.py::test_metrics_and_mutation_recall_use_buggy_samples_only PASSED [ 84%]
+tests/test_tfidf_pipeline.py::test_examples_limit_and_no_predicted_bugs PASSED [ 86%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[None] PASSED [ 88%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[123] PASSED [ 91%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[] PASSED [ 93%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[   ] PASSED [ 95%]
+tests/test_tfidf_pipeline.py::test_missing_models_explain_training_command PASSED [ 97%]
+tests/test_tfidf_pipeline.py::test_cli_produces_splits_reports_and_models PASSED [100%]
+
+=================== 45 passed, 31 subtests passed in 14.07s ====================
