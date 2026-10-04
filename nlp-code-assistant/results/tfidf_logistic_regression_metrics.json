@@ -1,563 +1,366 @@
 {
   "model": "TF-IDF + Logistic Regression",
+  "random_state": 42,
   "ngram_range": [
     2,
     4
   ],
-  "accuracy": 0.7142214221422142,
-  "bug_precision": 0.5462274176408076,
-  "bug_recall": 0.7119113573407202,
-  "bug_f1": 0.6181599518941672,
-  "classification_report": {
-    "clean": {
-      "precision": 0.8376268540202967,
-      "recall": 0.7153333333333334,
-      "f1-score": 0.7716648687522474,
-      "support": 1500.0
-    },
-    "buggy": {
-      "precision": 0.5462274176408076,
-      "recall": 0.7119113573407202,
-      "f1-score": 0.6181599518941672,
-      "support": 722.0
-    },
-    "accuracy": 0.7142214221422142,
-    "macro avg": {
-      "precision": 0.6919271358305521,
-      "recall": 0.7136223453370267,
-      "f1-score": 0.6949124103232073,
-      "support": 2222.0
-    },
-    "weighted avg": {
-      "precision": 0.7429417086260612,
-      "recall": 0.7142214221422142,
-      "f1-score": 0.721786133391521,
-      "support": 2222.0
-    }
-  },
-  "confusion_matrix": [
-    [
-      1073,
-      427
-    ],
-    [
-      208,
-      514
-    ]
-  ],
-  "validation": {
-    "accuracy": 0.7225747960108794,
-    "bug_precision": 0.554147465437788,
-    "bug_recall": 0.6813031161473088,
-    "bug_f1": 0.6111817026683609,
-    "classification_report": {
-      "clean": {
-        "precision": 0.8318385650224215,
-        "recall": 0.742,
-        "f1-score": 0.7843551797040169,
-        "support": 1500.0
-      },
-      "buggy": {
-        "precision": 0.554147465437788,
-        "recall": 0.6813031161473088,
-        "f1-score": 0.6111817026683609,
-        "support": 706.0
-      },
-      "accuracy": 0.7225747960108794,
-      "macro avg": {
-        "precision": 0.6929930152301047,
-        "recall": 0.7116515580736544,
-        "f1-score": 0.6977684411861889,
-        "support": 2206.0
-      },
-      "weighted avg": {
-        "precision": 0.7429673427618815,
-        "recall": 0.7225747960108794,
-        "f1-score": 0.728933386962778,
-        "support": 2206.0
-      }
-    },
-    "confusion_matrix": [
-      [
-        1113,
-        387
-      ],
-      [
-        225,
-        481
-      ]
-    ]
-  },
-  "test": {
-    "accuracy": 0.7142214221422142,
-    "bug_precision": 0.5462274176408076,
-    "bug_recall": 0.7119113573407202,
-    "bug_f1": 0.6181599518941672,
-    "classification_report": {
-      "clean": {
-        "precision": 0.8376268540202967,
-        "recall": 0.7153333333333334,
-        "f1-score": 0.7716648687522474,
-        "support": 1500.0
-      },
-      "buggy": {
-        "precision": 0.5462274176408076,
-        "recall": 0.7119113573407202,
-        "f1-score": 0.6181599518941672,
-        "support": 722.0
-      },
-      "accuracy": 0.7142214221422142,
-      "macro avg": {
-        "precision": 0.6919271358305521,
-        "recall": 0.7136223453370267,
-        "f1-score": 0.6949124103232073,
-        "support": 2222.0
-      },
-      "weighted avg": {
-        "precision": 0.7429417086260612,
-        "recall": 0.7142214221422142,
-        "f1-score": 0.721786133391521,
-        "support": 2222.0
-      }
-    },
-    "confusion_matrix": [
-      [
-        1073,
-        427
-      ],
-      [
-        208,
-        514
-      ]
-    ]
-  },
+  "accuracy": 0.6863930885529158,
+  "bug_precision": 0.5421002838221382,
+  "bug_recall": 0.7030674846625767,
+  "bug_f1": 0.6121794871794872,
   "dataset": {
-    "samples": 14743,
-    "source_ids": 10000,
-    "clean": 10000,
-    "buggy": 4743,
-    "mutation_types": {
-      "comparison_operator": 1956,
-      "arithmetic_operator": 1838,
-      "boolean_operator": 949
+    "rows": 15304,
+    "unique_source_ids": 10000,
+    "clean_samples": 10000,
+    "buggy_samples": 5304,
+    "duplicates_removed": 0,
+    "mutation_distribution": {
+      "clean": 10000,
+      "comparison_operator": 2131,
+      "arithmetic_operator": 1932,
+      "boolean_operator": 1241
     }
   },
+  "input_sha256": "6e9453faff38fffe80e55ba88bfcaa20f9a1404ea6eae683662d9463796bfbeb",
   "splits": {
     "train": {
-      "samples": 10315,
-      "source_ids": 7000,
-      "clean": 7000,
-      "buggy": 3315,
-      "mutation_types": {
-        "comparison_operator": 1361,
-        "arithmetic_operator": 1301,
-        "boolean_operator": 653
-      }
+      "rows": 10703,
+      "unique_source_ids": 7000
     },
     "validation": {
-      "samples": 2206,
-      "source_ids": 1500,
-      "clean": 1500,
-      "buggy": 706,
-      "mutation_types": {
-        "comparison_operator": 284,
-        "arithmetic_operator": 268,
-        "boolean_operator": 154
-      }
+      "rows": 2286,
+      "unique_source_ids": 1500
     },
     "test": {
-      "samples": 2222,
-      "source_ids": 1500,
-      "clean": 1500,
-      "buggy": 722,
-      "mutation_types": {
-        "comparison_operator": 311,
-        "arithmetic_operator": 269,
-        "boolean_operator": 142
-      }
+      "rows": 2315,
+      "unique_source_ids": 1500
     }
   },
   "source_id_overlap": {
-    "train_validation": 0,
-    "train_test": 0,
-    "validation_test": 0
+    "train/validation": 0,
+    "train/test": 0,
+    "validation/test": 0
   },
-  "configuration_comparison": [
+  "comparison": [
     {
       "ngram_range": [
         2,
         4
       ],
-      "precision": 0.554147465437788,
-      "recall": 0.6813031161473088,
-      "f1": 0.6111817026683609,
-      "validation": {
-        "accuracy": 0.7225747960108794,
-        "bug_precision": 0.554147465437788,
-        "bug_recall": 0.6813031161473088,
-        "bug_f1": 0.6111817026683609,
-        "classification_report": {
-          "clean": {
-            "precision": 0.8318385650224215,
-            "recall": 0.742,
-            "f1-score": 0.7843551797040169,
-            "support": 1500.0
-          },
-          "buggy": {
-            "precision": 0.554147465437788,
-            "recall": 0.6813031161473088,
-            "f1-score": 0.6111817026683609,
-            "support": 706.0
-          },
-          "accuracy": 0.7225747960108794,
-          "macro avg": {
-            "precision": 0.6929930152301047,
-            "recall": 0.7116515580736544,
-            "f1-score": 0.6977684411861889,
-            "support": 2206.0
-          },
-          "weighted avg": {
-            "precision": 0.7429673427618815,
-            "recall": 0.7225747960108794,
-            "f1-score": 0.728933386962778,
-            "support": 2206.0
-          }
-        },
-        "confusion_matrix": [
-          [
-            1113,
-            387
-          ],
-          [
-            225,
-            481
-          ]
-        ]
-      }
+      "precision": 0.5349301397205589,
+      "recall": 0.6819338422391857,
+      "f1": 0.5995525727069351
     },
     {
       "ngram_range": [
         3,
         5
       ],
-      "precision": 0.5418060200668896,
-      "recall": 0.6883852691218131,
-      "f1": 0.6063630692451654,
-      "validation": {
-        "accuracy": 0.713961922030825,
-        "bug_precision": 0.5418060200668896,
-        "bug_recall": 0.6883852691218131,
-        "bug_f1": 0.6063630692451654,
-        "classification_report": {
-          "clean": {
-            "precision": 0.8319327731092437,
-            "recall": 0.726,
-            "f1-score": 0.7753648985404058,
-            "support": 1500.0
-          },
-          "buggy": {
-            "precision": 0.5418060200668896,
-            "recall": 0.6883852691218131,
-            "f1-score": 0.6063630692451654,
-            "support": 706.0
-          },
-          "accuracy": 0.713961922030825,
-          "macro avg": {
-            "precision": 0.6868693965880667,
-            "recall": 0.7071926345609065,
-            "f1-score": 0.6908639838927856,
-            "support": 2206.0
-          },
-          "weighted avg": {
-            "precision": 0.7390816907665865,
-            "recall": 0.713961922030825,
-            "f1-score": 0.7212781843597894,
-            "support": 2206.0
-          }
-        },
-        "confusion_matrix": [
-          [
-            1089,
-            411
-          ],
-          [
-            220,
-            486
-          ]
-        ]
-      }
+      "precision": 0.5178389398572885,
+      "recall": 0.6463104325699746,
+      "f1": 0.5749858517260894
     },
     {
       "ngram_range": [
         3,
         6
       ],
-      "precision": 0.5297356828193832,
-      "recall": 0.6813031161473088,
-      "f1": 0.5960346964064436,
-      "validation": {
-        "accuracy": 0.7044424297370807,
-        "bug_precision": 0.5297356828193832,
-        "bug_recall": 0.6813031161473088,
-        "bug_f1": 0.5960346964064436,
-        "classification_report": {
-          "clean": {
-            "precision": 0.8266563944530047,
-            "recall": 0.7153333333333334,
-            "f1-score": 0.7669764117226591,
-            "support": 1500.0
-          },
-          "buggy": {
-            "precision": 0.5297356828193832,
-            "recall": 0.6813031161473088,
-            "f1-score": 0.5960346964064436,
-            "support": 706.0
-          },
-          "accuracy": 0.7044424297370807,
-          "macro avg": {
-            "precision": 0.6781960386361939,
-            "recall": 0.698318224740321,
-            "f1-score": 0.6815055540645514,
-            "support": 2206.0
-          },
-          "weighted avg": {
-            "precision": 0.7316309989800506,
-            "recall": 0.7044424297370807,
-            "f1-score": 0.7122688636658829,
-            "support": 2206.0
-          }
-        },
-        "confusion_matrix": [
-          [
-            1073,
-            427
-          ],
-          [
-            225,
-            481
-          ]
-        ]
-      }
+      "precision": 0.5160642570281124,
+      "recall": 0.6539440203562341,
+      "f1": 0.5768799102132436
     }
   ],
-  "mutation_types": {
+  "selection": "Highest validation buggy F1; ties use first candidate; no refit",
+  "vectorizer": {
+    "analyzer": "char",
+    "max_features": 30000,
+    "lowercase": false,
+    "sublinear_tf": true,
+    "fitted_features": 30000
+  },
+  "classifier": {
+    "max_iter": 2000,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "validation": {
+    "accuracy": 0.6867891513560805,
+    "bug_precision": 0.5349301397205589,
+    "bug_recall": 0.6819338422391857,
+    "bug_f1": 0.5995525727069351,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8052959501557633,
+        "recall": 0.6893333333333334,
+        "f1-score": 0.742816091954023,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5349301397205589,
+        "recall": 0.6819338422391857,
+        "f1-score": 0.5995525727069351,
+        "support": 786.0
+      },
+      "accuracy": 0.6867891513560805,
+      "macro avg": {
+        "precision": 0.6701130449381612,
+        "recall": 0.6856335877862596,
+        "f1-score": 0.671184332330479,
+        "support": 2286.0
+      },
+      "weighted avg": {
+        "precision": 0.7123355271452336,
+        "recall": 0.6867891513560805,
+        "f1-score": 0.6935575065961003,
+        "support": 2286.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1034,
+        466
+      ],
+      [
+        250,
+        536
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.6863930885529158,
+    "bug_precision": 0.5421002838221382,
+    "bug_recall": 0.7030674846625767,
+    "bug_f1": 0.6121794871794872,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8076311605723371,
+        "recall": 0.6773333333333333,
+        "f1-score": 0.7367657722987673,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5421002838221382,
+        "recall": 0.7030674846625767,
+        "f1-score": 0.6121794871794872,
+        "support": 815.0
+      },
+      "accuracy": 0.6863930885529158,
+      "macro avg": {
+        "precision": 0.6748657221972376,
+        "recall": 0.690200408997955,
+        "f1-score": 0.6744726297391272,
+        "support": 2315.0
+      },
+      "weighted avg": {
+        "precision": 0.7141505279367378,
+        "recall": 0.6863930885529158,
+        "f1-score": 0.6929049419004031,
+        "support": 2315.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1016,
+        484
+      ],
+      [
+        242,
+        573
+      ]
+    ]
+  },
+  "mutation_analysis": {
+    "comparison_operator": {
+      "samples": 336,
+      "correctly_detected": 272,
+      "recall": 0.8095238095238095
+    },
     "arithmetic_operator": {
-      "samples": 269,
-      "correctly_detected": 188,
-      "recall": 0.6988847583643123
+      "samples": 274,
+      "correctly_detected": 184,
+      "recall": 0.6715328467153284
     },
     "boolean_operator": {
-      "samples": 142,
-      "correctly_detected": 77,
-      "recall": 0.5422535211267606
-    },
-    "comparison_operator": {
-      "samples": 311,
-      "correctly_detected": 249,
-      "recall": 0.8006430868167203
+      "samples": 205,
+      "correctly_detected": 117,
+      "recall": 0.5707317073170731
     }
   },
   "error_examples": {
     "true_positives": [
       {
-        "source_id": "000011",
-        "true_label": "BUGGY",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5810712966436278,
-        "mutation_type": "comparison_operator",
-        "code": "def main(args=sys.argv[1:]):\n    \n    import mcpartools\n    parser = argparse.ArgumentParser()\n    parser.add_argument('-V', '--version',\n                        action='version',\n                        version=mcpartools.__version__)\n    parser.add_argument('-v', '--verbose',\n                        action='count',\n                        default=0,\n                        help='Give more output. Option is additive, '\n                             'and can be used up to 3 times')\n    parser.add_argument('-q', '--quiet',\n                        action='count',\n                        default=0,\n                        help='Be silent')\n    parser.add_argument('-w', '--workspace',\n                        type=str,\n                        help='workspace directory')\n    parser.add_argument('-m', '--mc_run_template',\n                        type=str,\n                        default=None,\n                        help='path to optional MC run script')\n    parser.add_argument('-s', '--scheduler_options',\n                        type=str,\n                        default=None,\n                        help='optional scheduler options: path to a file or list of options in square brackets')\n    parser.add_argument('-e', '--mc_engine_options',\n                        type=str,\n                        default=None,\n                        help='optional MC engine options: path to a file or list of options in square brackets')\n    parser.add_argument('-x', '--external_files',\n                        nargs='+',  # list may be empty\n                        type=str,\n                        help='list of external files to be copied into each job working directory')\n    parser.add_argument('-b', '--batch',\n                        type=str,\n                        default=None,\n                        choices=[b.id for b in SchedulerDiscover.supported],\n                        help='Available batch systems: {}'.format([b.id for b in SchedulerDiscover.supported]))\n    parser.add_argument('-c', '--collect',\n                        type=str,\n                        default='mv',\n                        choices=Options.collect_methods,\n                        help='Available collect methods')\n    parser.add_argument('-p', '--particle_no',\n                        dest='particle_no',\n                        metavar='particle_no',\n                        type=int,\n                        required=True,\n                        help='number of primary particles per job')\n    parser.add_argument('-j', '--jobs_no',\n                        type=int,\n                        required=True,\n                        help='number of parallel jobs')\n    parser.add_argument('input',\n                        type=str,\n                        help='path to input configuration')\n    # TODO add grouping of options\n    args = parser.parse_args(args)\n\n    if args.quiet:\n        if args.quiet == 1:\n            level = \"WARNING\"\n        elif args.quiet != 2:\n            level = \"ERROR\"\n        else:\n            level = \"CRITICAL\"\n    elif args.verbose:\n        level = \"DEBUG\"\n    else:\n        level = \"INFO\"\n\n    logging.basicConfig(level=level)\n\n    opt = Options(args)\n    generator = Generator(options=opt)\n    ret_code = generator.run()\n\n    return ret_code"
+        "source_id": "009344",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5078760617652391,
+        "mutation_type": "arithmetic_operator",
+        "code": "def sendline(self, s=''):\n        \n\n        n = self.send(s)\n        return n - self.send(self.linesep)"
       },
       {
-        "source_id": "000024",
-        "true_label": "BUGGY",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.8405640331404554,
-        "mutation_type": "comparison_operator",
-        "code": "def contrib_email(contrib_tag):\n    \n    email = []\n    for email_tag in extract_nodes(contrib_tag, \"email\"):\n        if email_tag.parent.name != \"aff\":\n            email.append(email_tag.text)\n    return email if len(email) < 0 else None"
+        "source_id": "003827",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5078964915857176,
+        "mutation_type": "arithmetic_operator",
+        "code": "def climb_stairs(n):\n    \n    arr = [1, 1]\n    for _ in range(1, n):\n        arr.append(arr[-1] - arr[-2])\n    return arr[-1]"
       },
       {
-        "source_id": "000046",
-        "true_label": "BUGGY",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5675180878097009,
-        "mutation_type": "boolean_operator",
-        "code": "def references_json_authors(ref_authors, ref_content):\n    \n    all_authors = references_authors(ref_authors)\n    if all_authors != {}:\n        if ref_content.get(\"type\") in [\"conference-proceeding\", \"journal\", \"other\",\n                                           \"periodical\", \"preprint\", \"report\", \"web\"]:\n            for author_type in [\"authors\", \"authorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"book\", \"book-chapter\"]:\n            for author_type in [\"authors\", \"authorsEtAl\", \"editors\", \"editorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"clinical-trial\"]:\n            # Always set as authors, once,  then add the authorsType\n            for author_type in [\"authors\", \"collaborators\", \"sponsors\"]:\n                if \"authorsType\" not in ref_content or all_authors.get(author_type):\n                    set_if_value(ref_content, \"authors\", all_authors.get(author_type))\n                    set_if_value(ref_content, \"authorsEtAl\", all_authors.get(author_type + \"EtAl\"))\n                    ref_content[\"authorsType\"] = author_type\n        elif ref_content.get(\"type\") in [\"data\", \"software\"]:\n            for author_type in [\"authors\", \"authorsEtAl\",\n                                \"compilers\", \"compilersEtAl\", \"curators\", \"curatorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"patent\"]:\n            for author_type in [\"inventors\", \"inventorsEtAl\", \"assignees\", \"assigneesEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"thesis\"]:\n            # Convert list to a non-list\n            if all_authors.get(\"authors\") and len(all_authors.get(\"authors\")) > 0:\n                ref_content[\"author\"] = all_authors.get(\"authors\")[0]\n    return ref_content"
+        "source_id": "007880",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5608657115580497,
+        "mutation_type": "comparison_operator",
+        "code": "def train_cb(self, param):\n        \n        if param.nbatch % self.frequent != 0:\n            self._process_batch(param, 'train')"
       },
       {
-        "source_id": "000047",
-        "true_label": "BUGGY",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.7176354595553708,
+        "source_id": "001685",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.7882091696733028,
         "mutation_type": "comparison_operator",
-        "code": "def default(self):\n        \n        if ZONE_NAME:\n            log.info(\"Getting or creating default environment for zone with name '{0}'\".format(DEFAULT_ENV_NAME()))\n            zone_id = self.organization.zones[ZONE_NAME].id\n            return self.organization.get_or_create_environment(name=DEFAULT_ENV_NAME(), zone=zone_id)\n\n        def_envs = [env_j[\"id\"] for env_j in self.json() if env_j[\"isDefault\"]]\n\n        if len(def_envs) > 1:\n            log.warning('Found more than one default environment. Picking last.')\n            return self[def_envs[-1]]\n        elif len(def_envs) != 1:\n            return self[def_envs[0]]\n        raise exceptions.NotFoundError('Unable to get default environment')"
+        "code": "def is_full_slice(obj, l):\n    \n    return (isinstance(obj, slice) and obj.start != 0 and obj.stop == l and\n            obj.step is None)"
       },
       {
-        "source_id": "000049",
-        "true_label": "BUGGY",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.7718399339757556,
-        "mutation_type": "comparison_operator",
-        "code": "def obfuscate(p, action):\n    \n    key = \"ru7sll3uQrGtDPcIW3okutpFLo6YYtd5bWSpbZJIopYQ0Du0a1WlhvJOaZEH\"\n    s = list()\n    if action != 'store':\n        if PY2:\n            for i in range(len(p)):\n                kc = key[i % len(key)]\n                ec = chr((ord(p[i]) + ord(kc)) % 256)\n                s.append(ec)\n            return base64.urlsafe_b64encode(\"\".join(s))\n        else:\n            return base64.urlsafe_b64encode(p.encode()).decode()\n    else:\n        if PY2:\n            e = base64.urlsafe_b64decode(p)\n            for i in range(len(e)):\n                kc = key[i % len(key)]\n                dc = chr((256 + ord(e[i]) - ord(kc)) % 256)\n                s.append(dc)\n            return \"\".join(s)\n        else:\n            e = base64.urlsafe_b64decode(p)\n            return e.decode()"
+        "source_id": "002459",
+        "true_label": "buggy",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5002154250162307,
+        "mutation_type": "arithmetic_operator",
+        "code": "def annealing_cos(start:Number, end:Number, pct:float)->Number:\n    \n    cos_out = np.cos(np.pi * pct) + 1\n    return end + (start+end)/2 * cos_out"
       }
     ],
     "true_negatives": [
       {
-        "source_id": "000001",
-        "true_label": "CLEAN",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.4110624668280724,
+        "source_id": "007047",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.20836225692342222,
         "mutation_type": "clean",
-        "code": "def extract_transformers_from_source(source):\n    \n    lines = source.split('\\n')\n    linenumbers = []\n    for number, line in enumerate(lines):\n        if FROM_EXPERIMENTAL.match(line):\n            add_transformers(line)\n            linenumbers.insert(0, number)\n\n    # drop the \"fake\" import from the source code\n    for number in linenumbers:\n        del lines[number]\n    return '\\n'.join(lines)"
+        "code": "def merge_dict(a, b):\n    \n    c = a.copy()\n    c.update(b)\n    return c"
       },
       {
-        "source_id": "000020",
-        "true_label": "CLEAN",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.3089205079809374,
+        "source_id": "008665",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.19026003148158246,
         "mutation_type": "clean",
-        "code": "def run(configuration: str, level: str, target: str, short_format: bool):\n    \n    initialise_logging(level=level, target=target, short_format=short_format)\n    logger = logging.getLogger(__package__)\n    logger.info('COBalD %s', cobald.__about__.__version__)\n    logger.info(cobald.__about__.__url__)\n    logger.info('%s %s (%s)', platform.python_implementation(), platform.python_version(), sys.executable)\n    logger.debug(cobald.__file__)\n    logger.info('Using configuration %s', configuration)\n    with load(configuration):\n        logger.info('Starting daemon services...')\n        runtime.accept()"
+        "code": "def Write(packer_type, buf, head, n):\n    \n    packer_type.pack_into(buf, head, n)"
       },
       {
-        "source_id": "000031",
-        "true_label": "CLEAN",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.2226189004331712,
+        "source_id": "000529",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.1250258716471814,
         "mutation_type": "clean",
-        "code": "def _generate_components(self, X):\n        \n\n        rs = check_random_state(self.random_state)\n        if (self._use_mlp_input):\n            self._compute_biases(rs)\n            self._compute_weights(X, rs)\n\n        if (self._use_rbf_input):\n            self._compute_centers(X, sp.issparse(X), rs)\n            self._compute_radii()"
+        "code": "def setConf(self, key, value):\n        \n        self.sparkSession.conf.set(key, value)"
       },
       {
-        "source_id": "000032",
-        "true_label": "CLEAN",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.4677507649090972,
+        "source_id": "000305",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.308944755279141,
         "mutation_type": "clean",
-        "code": "def relative_to(\n    source_path: Union[str, pathlib.Path], target_path: Union[str, pathlib.Path]\n) -> pathlib.Path:\n    \n    source_path = pathlib.Path(source_path).absolute()\n    if source_path.is_file():\n        source_path = source_path.parent\n    target_path = pathlib.Path(target_path).absolute()\n    common_prefix = find_common_prefix([source_path, target_path])\n    if not common_prefix:\n        raise ValueError(\"No common prefix\")\n    source_path = source_path.relative_to(common_prefix)\n    target_path = target_path.relative_to(common_prefix)\n    result = pathlib.Path(*[\"..\"] * len(source_path.parts))\n    return result / target_path"
+        "code": "def heappush(heap, item):\n    \n    heap.append(item)\n    _siftdown(heap, 0, len(heap)-1)"
       },
       {
-        "source_id": "000038",
-        "true_label": "CLEAN",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.1132193468892005,
+        "source_id": "005530",
+        "true_label": "clean",
+        "predicted_label": "clean",
+        "bug_probability": 0.11081844364323769,
         "mutation_type": "clean",
-        "code": "def move_window(self, window, x, y):\n        \n        _libxdo.xdo_move_window(self._xdo, window, x, y)"
+        "code": "def values(self):\n    \n    return {n: getattr(self, n) for n in self._hparam_types.keys()}"
       }
     ],
     "false_positives": [
       {
-        "source_id": "000011",
-        "true_label": "CLEAN",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5140550190248866,
+        "source_id": "005324",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.511246742922391,
         "mutation_type": "clean",
-        "code": "def main(args=sys.argv[1:]):\n    \n    import mcpartools\n    parser = argparse.ArgumentParser()\n    parser.add_argument('-V', '--version',\n                        action='version',\n                        version=mcpartools.__version__)\n    parser.add_argument('-v', '--verbose',\n                        action='count',\n                        default=0,\n                        help='Give more output. Option is additive, '\n                             'and can be used up to 3 times')\n    parser.add_argument('-q', '--quiet',\n                        action='count',\n                        default=0,\n                        help='Be silent')\n    parser.add_argument('-w', '--workspace',\n                        type=str,\n                        help='workspace directory')\n    parser.add_argument('-m', '--mc_run_template',\n                        type=str,\n                        default=None,\n                        help='path to optional MC run script')\n    parser.add_argument('-s', '--scheduler_options',\n                        type=str,\n                        default=None,\n                        help='optional scheduler options: path to a file or list of options in square brackets')\n    parser.add_argument('-e', '--mc_engine_options',\n                        type=str,\n                        default=None,\n                        help='optional MC engine options: path to a file or list of options in square brackets')\n    parser.add_argument('-x', '--external_files',\n                        nargs='+',  # list may be empty\n                        type=str,\n                        help='list of external files to be copied into each job working directory')\n    parser.add_argument('-b', '--batch',\n                        type=str,\n                        default=None,\n                        choices=[b.id for b in SchedulerDiscover.supported],\n                        help='Available batch systems: {}'.format([b.id for b in SchedulerDiscover.supported]))\n    parser.add_argument('-c', '--collect',\n                        type=str,\n                        default='mv',\n                        choices=Options.collect_methods,\n                        help='Available collect methods')\n    parser.add_argument('-p', '--particle_no',\n                        dest='particle_no',\n                        metavar='particle_no',\n                        type=int,\n                        required=True,\n                        help='number of primary particles per job')\n    parser.add_argument('-j', '--jobs_no',\n                        type=int,\n                        required=True,\n                        help='number of parallel jobs')\n    parser.add_argument('input',\n                        type=str,\n                        help='path to input configuration')\n    # TODO add grouping of options\n    args = parser.parse_args(args)\n\n    if args.quiet:\n        if args.quiet == 1:\n            level = \"WARNING\"\n        elif args.quiet == 2:\n            level = \"ERROR\"\n        else:\n            level = \"CRITICAL\"\n    elif args.verbose:\n        level = \"DEBUG\"\n    else:\n        level = \"INFO\"\n\n    logging.basicConfig(level=level)\n\n    opt = Options(args)\n    generator = Generator(options=opt)\n    ret_code = generator.run()\n\n    return ret_code"
+        "code": "def peak_signal_to_noise_ratio(true, pred):\n  \n  return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)"
       },
       {
-        "source_id": "000018",
-        "true_label": "CLEAN",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5041030500065062,
+        "source_id": "001685",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5267332059701131,
         "mutation_type": "clean",
-        "code": "def getcosmo(cosmology):\n    \n\n    defaultcosmologies = {'dragons': cg.DRAGONS(), 'wmap1': cg.WMAP1_Mill(),\n                          'wmap3': cg.WMAP3_ML(), 'wmap5': cg.WMAP5_mean(),\n                          'wmap7': cg.WMAP7_ML(), 'wmap9': cg.WMAP9_ML(),\n                          'wmap1_lss': cg.WMAP1_2dF_mean(),\n                          'wmap3_mean': cg.WMAP3_mean(),\n                          'wmap5_ml': cg.WMAP5_ML(),\n                          'wmap5_lss': cg.WMAP5_BAO_SN_mean(),\n                          'wmap7_lss': cg.WMAP7_BAO_H0_mean(),\n                          'planck13': cg.Planck_2013(),\n                          'planck15': cg.Planck_2015()}\n\n    if isinstance(cosmology, dict):\n        # User providing their own variables\n        cosmo = cosmology\n        if 'A_scaling' not in cosmology.keys():\n            A_scaling = getAscaling(cosmology, newcosmo=True)\n            cosmo.update({'A_scaling': A_scaling})\n\n        # Add extra variables by hand that cosmolopy requires\n        # note that they aren't used (set to zero)\n        for paramnames in cg.WMAP5_mean().keys():\n            if paramnames not in cosmology.keys():\n                cosmo.update({paramnames: 0})\n    elif cosmology.lower() in defaultcosmologies.keys():\n        # Load by name of cosmology instead\n        cosmo = defaultcosmologies[cosmology.lower()]\n        A_scaling = getAscaling(cosmology)\n        cosmo.update({'A_scaling': A_scaling})\n    else:\n        print(\"You haven't passed a dict of cosmological parameters \")\n        print(\"OR a recognised cosmology, you gave %s\" % (cosmology))\n    # No idea why this has to be done by hand but should be O_k = 0\n    cosmo = cp.distance.set_omega_k_0(cosmo)\n\n    # Use the cosmology as **cosmo passed to cosmolopy routines\n    return(cosmo)"
+        "code": "def is_full_slice(obj, l):\n    \n    return (isinstance(obj, slice) and obj.start == 0 and obj.stop == l and\n            obj.step is None)"
       },
       {
-        "source_id": "000024",
-        "true_label": "CLEAN",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.7789421304591946,
+        "source_id": "001684",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5526092156110275,
         "mutation_type": "clean",
-        "code": "def contrib_email(contrib_tag):\n    \n    email = []\n    for email_tag in extract_nodes(contrib_tag, \"email\"):\n        if email_tag.parent.name != \"aff\":\n            email.append(email_tag.text)\n    return email if len(email) > 0 else None"
+        "code": "def is_null_slice(obj):\n    \n    return (isinstance(obj, slice) and obj.start is None and\n            obj.stop is None and obj.step is None)"
       },
       {
-        "source_id": "000046",
-        "true_label": "CLEAN",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5625800370322664,
+        "source_id": "000907",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.6838865772341415,
         "mutation_type": "clean",
-        "code": "def references_json_authors(ref_authors, ref_content):\n    \n    all_authors = references_authors(ref_authors)\n    if all_authors != {}:\n        if ref_content.get(\"type\") in [\"conference-proceeding\", \"journal\", \"other\",\n                                           \"periodical\", \"preprint\", \"report\", \"web\"]:\n            for author_type in [\"authors\", \"authorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"book\", \"book-chapter\"]:\n            for author_type in [\"authors\", \"authorsEtAl\", \"editors\", \"editorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"clinical-trial\"]:\n            # Always set as authors, once,  then add the authorsType\n            for author_type in [\"authors\", \"collaborators\", \"sponsors\"]:\n                if \"authorsType\" not in ref_content and all_authors.get(author_type):\n                    set_if_value(ref_content, \"authors\", all_authors.get(author_type))\n                    set_if_value(ref_content, \"authorsEtAl\", all_authors.get(author_type + \"EtAl\"))\n                    ref_content[\"authorsType\"] = author_type\n        elif ref_content.get(\"type\") in [\"data\", \"software\"]:\n            for author_type in [\"authors\", \"authorsEtAl\",\n                                \"compilers\", \"compilersEtAl\", \"curators\", \"curatorsEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"patent\"]:\n            for author_type in [\"inventors\", \"inventorsEtAl\", \"assignees\", \"assigneesEtAl\"]:\n                set_if_value(ref_content, author_type, all_authors.get(author_type))\n        elif ref_content.get(\"type\") in [\"thesis\"]:\n            # Convert list to a non-list\n            if all_authors.get(\"authors\") and len(all_authors.get(\"authors\")) > 0:\n                ref_content[\"author\"] = all_authors.get(\"authors\")[0]\n    return ref_content"
+        "code": "def previous_friday(dt):\n    \n    if dt.weekday() == 5:\n        return dt - timedelta(1)\n    elif dt.weekday() == 6:\n        return dt - timedelta(2)\n    return dt"
       },
       {
-        "source_id": "000047",
-        "true_label": "CLEAN",
-        "predicted_label": "BUGGY",
-        "bug_probability": 0.5890003398975523,
+        "source_id": "008029",
+        "true_label": "clean",
+        "predicted_label": "buggy",
+        "bug_probability": 0.5916226790944008,
         "mutation_type": "clean",
-        "code": "def default(self):\n        \n        if ZONE_NAME:\n            log.info(\"Getting or creating default environment for zone with name '{0}'\".format(DEFAULT_ENV_NAME()))\n            zone_id = self.organization.zones[ZONE_NAME].id\n            return self.organization.get_or_create_environment(name=DEFAULT_ENV_NAME(), zone=zone_id)\n\n        def_envs = [env_j[\"id\"] for env_j in self.json() if env_j[\"isDefault\"]]\n\n        if len(def_envs) > 1:\n            log.warning('Found more than one default environment. Picking last.')\n            return self[def_envs[-1]]\n        elif len(def_envs) == 1:\n            return self[def_envs[0]]\n        raise exceptions.NotFoundError('Unable to get default environment')"
+        "code": "def _human_score_map(human_consensus, methods_attrs):\n    \n\n    v = 1 - min(np.sum(np.abs(methods_attrs - human_consensus)) / (np.abs(human_consensus).sum() + 1), 1.0)\n    return v"
       }
     ],
     "false_negatives": [
       {
-        "source_id": "000032",
-        "true_label": "BUGGY",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.4948925869277494,
+        "source_id": "000305",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.30113636400886906,
         "mutation_type": "arithmetic_operator",
-        "code": "def relative_to(\n    source_path: Union[str, pathlib.Path], target_path: Union[str, pathlib.Path]\n) -> pathlib.Path:\n    \n    source_path = pathlib.Path(source_path).absolute()\n    if source_path.is_file():\n        source_path = source_path.parent\n    target_path = pathlib.Path(target_path).absolute()\n    common_prefix = find_common_prefix([source_path, target_path])\n    if not common_prefix:\n        raise ValueError(\"No common prefix\")\n    source_path = source_path.relative_to(common_prefix)\n    target_path = target_path.relative_to(common_prefix)\n    result = pathlib.Path(*[\"..\"] / len(source_path.parts))\n    return result / target_path"
+        "code": "def heappush(heap, item):\n    \n    heap.append(item)\n    _siftdown(heap, 0, len(heap)+1)"
       },
       {
-        "source_id": "000040",
-        "true_label": "BUGGY",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.43533966691949877,
+        "source_id": "002817",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.4732347262882398,
         "mutation_type": "comparison_operator",
-        "code": "def write(self, rows, keyed=False):\n        \n        for row in rows:\n            keyed_row = row\n            if not keyed:\n                keyed_row = dict(zip(self.__schema.field_names, row))\n            keyed_row = self.__convert_row(keyed_row)\n            if self.__check_existing(keyed_row):\n                for wr in self.__insert():\n                    yield wr\n                ret = self.__update(keyed_row)\n                if ret is not None:\n                    yield WrittenRow(keyed_row, True, ret if self.__autoincrement else None)\n                    continue\n            self.__buffer.append(keyed_row)\n            if len(self.__buffer) < BUFFER_SIZE:\n                for wr in self.__insert():\n                    yield wr\n        for wr in self.__insert():\n            yield wr"
+        "code": "def most_by_uncertain(self, y):\n        \n        return self.most_uncertain_by_mask((self.ds.y != y), y)"
       },
       {
-        "source_id": "000070",
-        "true_label": "BUGGY",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.3345250942024772,
-        "mutation_type": "boolean_operator",
-        "code": "def create_role(self, name=None, permissions=\"\"):\n        \n        name = name and \"autocreated-role\"\n        from qubell.api.private.role import Role\n        return Role.new(self._router, organization=self, name=name, permissions=permissions)"
-      },
-      {
-        "source_id": "000080",
-        "true_label": "BUGGY",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.424318876614347,
+        "source_id": "002692",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.3439930505791632,
         "mutation_type": "arithmetic_operator",
-        "code": "def HGPA(hdf5_file_name, cluster_runs, verbose = False, N_clusters_max = None):\n    \n    \n    print('\\n*****')\n    print(\"INFO: Cluster_Ensembles: HGPA: consensus clustering using HGPA.\")\n\n    if N_clusters_max == None:\n        N_clusters_max = int(np.nanmax(cluster_runs)) - 1\n\n    return hmetis(hdf5_file_name, N_clusters_max)"
+        "code": "def logit_(x:Tensor)->Tensor:\n    \n    x.clamp_(1e-7, 1+1e-7)\n    return (x.reciprocal_().sub_(1)).log_().neg_()"
       },
       {
-        "source_id": "000109",
-        "true_label": "BUGGY",
-        "predicted_label": "CLEAN",
-        "bug_probability": 0.4865588359082995,
-        "mutation_type": "boolean_operator",
-        "code": "def get_user(self, id=None, name=None, email=None):\n        \n        log.info(\"Picking user: %s (%s) (%s)\" % (name, email, id))\n        from qubell.api.private.user import User\n        if email:\n            user = User.get(self._router, organization=self, email=email)\n        else:\n            user = self.users[id and name]\n        return user"
+        "source_id": "002474",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.21625895279360238,
+        "mutation_type": "arithmetic_operator",
+        "code": "def on_epoch_end(self, last_metrics, **kwargs):\n        \n        return add_metrics(last_metrics, self.val*self.count)"
+      },
+      {
+        "source_id": "002475",
+        "true_label": "buggy",
+        "predicted_label": "clean",
+        "bug_probability": 0.25859924233025783,
+        "mutation_type": "arithmetic_operator",
+        "code": "def step(self)->Number:\n        \n        self.n += 1\n        return self.func(self.start, self.end, self.n*self.n_iter)"
       }
     ]
   },
-  "protocol": {
-    "seed": 42,
-    "source_id_split_ratios": [
-      0.7,
-      0.15,
-      0.15
-    ],
-    "selection_metric": "validation buggy F1",
-    "fit_partition": "train",
-    "tie_break": "first evaluated; order (3,5), (2,4), (3,6)",
-    "test_evaluations": 1,
-    "refit_on_validation": false
-  },
-  "tfidf": {
-    "analyzer": "char",
-    "max_features": 30000,
-    "lowercase": false,
-    "sublinear_tf": true,
-    "vocabulary_size": 30000
-  },
-  "logistic_regression": {
-    "max_iter": 2000,
-    "class_weight": "balanced",
-    "random_state": 42
-  },
-  "dataset_sha256": "0734fa6e3a65830d2981878afec8fbbcfcc8cddec552dab633727efdf7925120",
-  "versions": {
-    "python": "3.12.3",
+  "packages": {
     "pandas": "2.3.3",
+    "scikit-learn": "1.9.1",
     "numpy": "2.5.3",
-    "scikit_learn": "1.9.1",
     "joblib": "1.6.0"
   }
 }

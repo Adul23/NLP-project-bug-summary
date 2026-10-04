@@ -1,608 +1,230 @@
 
-TRUE POSITIVES (5 examples)
+TRUE_POSITIVES: 5 examples (up to 5 available)
 ----------------------------------------
-source_id: 000011
-true_label: BUGGY
-predicted_label: BUGGY
-bug_probability: 0.5810712966436278
-mutation_type: comparison_operator
-
-CODE:
-def main(args=sys.argv[1:]):
-    
-    import mcpartools
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-V', '--version',
-                        action='version',
-                        version=mcpartools.__version__)
-    parser.add_argument('-v', '--verbose',
-                        action='count',
-                        default=0,
-                        help='Give more output. Option is additive, '
-                             'and can be used up to 3 times')
-    parser.add_argument('-q', '--quiet',
-                        action='count',
-                        default=0,
-                        help='Be silent')
-    parser.add_argument('-w', '--workspace',
-                        type=str,
-                        help='workspace directory')
-    parser.add_argument('-m', '--mc_run_template',
-                        type=str,
-                        default=None,
-                        help='path to optional MC run script')
-    parser.add_argument('-s', '--scheduler_options',
-                        type=str,
-                        default=None,
-                        help='optional scheduler options: path to a file or list of options in square brackets')
-    parser.add_argument('-e', '--mc_engine_options',
-                        type=str,
-                        default=None,
-                        help='optional MC engine options: path to a file or list of options in square brackets')
-    parser.add_argument('-x', '--external_files',
-                        nargs='+',  # list may be empty
-                        type=str,
-                        help='list of external files to be copied into each job working directory')
-    parser.add_argument('-b', '--batch',
-                        type=str,
-                        default=None,
-                        choices=[b.id for b in SchedulerDiscover.supported],
-                        help='Available batch systems: {}'.format([b.id for b in SchedulerDiscover.supported]))
-    parser.add_argument('-c', '--collect',
-                        type=str,
-                        default='mv',
-                        choices=Options.collect_methods,
-                        help='Available collect methods')
-    parser.add_argument('-p', '--particle_no',
-                        dest='particle_no',
-                        metavar='particle_no',
-                        type=int,
-                        required=True,
-                        help='number of primary particles per job')
-    parser.add_argument('-j', '--jobs_no',
-                        type=int,
-                        required=True,
-                        help='number of parallel jobs')
-    parser.add_argument('input',
-                        type=str,
-                        help='path to input configuration')
-    # TODO add grouping of options
-    args = parser.parse_args(args)
-
-    if args.quiet:
-        if args.quiet == 1:
-            level = "WARNING"
-        elif args.quiet != 2:
-            level = "ERROR"
-        else:
-            level = "CRITICAL"
-    elif args.verbose:
-        level = "DEBUG"
-    else:
-        level = "INFO"
-
-    logging.basicConfig(level=level)
-
-    opt = Options(args)
-    generator = Generator(options=opt)
-    ret_code = generator.run()
-
-    return ret_code
-----------------------------------------
-source_id: 000024
-true_label: BUGGY
-predicted_label: BUGGY
-bug_probability: 0.8405640331404554
-mutation_type: comparison_operator
-
-CODE:
-def contrib_email(contrib_tag):
-    
-    email = []
-    for email_tag in extract_nodes(contrib_tag, "email"):
-        if email_tag.parent.name != "aff":
-            email.append(email_tag.text)
-    return email if len(email) < 0 else None
-----------------------------------------
-source_id: 000046
-true_label: BUGGY
-predicted_label: BUGGY
-bug_probability: 0.5675180878097009
-mutation_type: boolean_operator
-
-CODE:
-def references_json_authors(ref_authors, ref_content):
-    
-    all_authors = references_authors(ref_authors)
-    if all_authors != {}:
-        if ref_content.get("type") in ["conference-proceeding", "journal", "other",
-                                           "periodical", "preprint", "report", "web"]:
-            for author_type in ["authors", "authorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["book", "book-chapter"]:
-            for author_type in ["authors", "authorsEtAl", "editors", "editorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["clinical-trial"]:
-            # Always set as authors, once,  then add the authorsType
-            for author_type in ["authors", "collaborators", "sponsors"]:
-                if "authorsType" not in ref_content or all_authors.get(author_type):
-                    set_if_value(ref_content, "authors", all_authors.get(author_type))
-                    set_if_value(ref_content, "authorsEtAl", all_authors.get(author_type + "EtAl"))
-                    ref_content["authorsType"] = author_type
-        elif ref_content.get("type") in ["data", "software"]:
-            for author_type in ["authors", "authorsEtAl",
-                                "compilers", "compilersEtAl", "curators", "curatorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["patent"]:
-            for author_type in ["inventors", "inventorsEtAl", "assignees", "assigneesEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["thesis"]:
-            # Convert list to a non-list
-            if all_authors.get("authors") and len(all_authors.get("authors")) > 0:
-                ref_content["author"] = all_authors.get("authors")[0]
-    return ref_content
-----------------------------------------
-source_id: 000047
-true_label: BUGGY
-predicted_label: BUGGY
-bug_probability: 0.7176354595553708
-mutation_type: comparison_operator
-
-CODE:
-def default(self):
-        
-        if ZONE_NAME:
-            log.info("Getting or creating default environment for zone with name '{0}'".format(DEFAULT_ENV_NAME()))
-            zone_id = self.organization.zones[ZONE_NAME].id
-            return self.organization.get_or_create_environment(name=DEFAULT_ENV_NAME(), zone=zone_id)
-
-        def_envs = [env_j["id"] for env_j in self.json() if env_j["isDefault"]]
-
-        if len(def_envs) > 1:
-            log.warning('Found more than one default environment. Picking last.')
-            return self[def_envs[-1]]
-        elif len(def_envs) != 1:
-            return self[def_envs[0]]
-        raise exceptions.NotFoundError('Unable to get default environment')
-----------------------------------------
-source_id: 000049
-true_label: BUGGY
-predicted_label: BUGGY
-bug_probability: 0.7718399339757556
-mutation_type: comparison_operator
-
-CODE:
-def obfuscate(p, action):
-    
-    key = "ru7sll3uQrGtDPcIW3okutpFLo6YYtd5bWSpbZJIopYQ0Du0a1WlhvJOaZEH"
-    s = list()
-    if action != 'store':
-        if PY2:
-            for i in range(len(p)):
-                kc = key[i % len(key)]
-                ec = chr((ord(p[i]) + ord(kc)) % 256)
-                s.append(ec)
-            return base64.urlsafe_b64encode("".join(s))
-        else:
-            return base64.urlsafe_b64encode(p.encode()).decode()
-    else:
-        if PY2:
-            e = base64.urlsafe_b64decode(p)
-            for i in range(len(e)):
-                kc = key[i % len(key)]
-                dc = chr((256 + ord(e[i]) - ord(kc)) % 256)
-                s.append(dc)
-            return "".join(s)
-        else:
-            e = base64.urlsafe_b64decode(p)
-            return e.decode()
-
-TRUE NEGATIVES (5 examples)
-----------------------------------------
-source_id: 000001
-true_label: CLEAN
-predicted_label: CLEAN
-bug_probability: 0.4110624668280724
-mutation_type: clean
-
-CODE:
-def extract_transformers_from_source(source):
-    
-    lines = source.split('\n')
-    linenumbers = []
-    for number, line in enumerate(lines):
-        if FROM_EXPERIMENTAL.match(line):
-            add_transformers(line)
-            linenumbers.insert(0, number)
-
-    # drop the "fake" import from the source code
-    for number in linenumbers:
-        del lines[number]
-    return '\n'.join(lines)
-----------------------------------------
-source_id: 000020
-true_label: CLEAN
-predicted_label: CLEAN
-bug_probability: 0.3089205079809374
-mutation_type: clean
-
-CODE:
-def run(configuration: str, level: str, target: str, short_format: bool):
-    
-    initialise_logging(level=level, target=target, short_format=short_format)
-    logger = logging.getLogger(__package__)
-    logger.info('COBalD %s', cobald.__about__.__version__)
-    logger.info(cobald.__about__.__url__)
-    logger.info('%s %s (%s)', platform.python_implementation(), platform.python_version(), sys.executable)
-    logger.debug(cobald.__file__)
-    logger.info('Using configuration %s', configuration)
-    with load(configuration):
-        logger.info('Starting daemon services...')
-        runtime.accept()
-----------------------------------------
-source_id: 000031
-true_label: CLEAN
-predicted_label: CLEAN
-bug_probability: 0.2226189004331712
-mutation_type: clean
-
-CODE:
-def _generate_components(self, X):
-        
-
-        rs = check_random_state(self.random_state)
-        if (self._use_mlp_input):
-            self._compute_biases(rs)
-            self._compute_weights(X, rs)
-
-        if (self._use_rbf_input):
-            self._compute_centers(X, sp.issparse(X), rs)
-            self._compute_radii()
-----------------------------------------
-source_id: 000032
-true_label: CLEAN
-predicted_label: CLEAN
-bug_probability: 0.4677507649090972
-mutation_type: clean
-
-CODE:
-def relative_to(
-    source_path: Union[str, pathlib.Path], target_path: Union[str, pathlib.Path]
-) -> pathlib.Path:
-    
-    source_path = pathlib.Path(source_path).absolute()
-    if source_path.is_file():
-        source_path = source_path.parent
-    target_path = pathlib.Path(target_path).absolute()
-    common_prefix = find_common_prefix([source_path, target_path])
-    if not common_prefix:
-        raise ValueError("No common prefix")
-    source_path = source_path.relative_to(common_prefix)
-    target_path = target_path.relative_to(common_prefix)
-    result = pathlib.Path(*[".."] * len(source_path.parts))
-    return result / target_path
-----------------------------------------
-source_id: 000038
-true_label: CLEAN
-predicted_label: CLEAN
-bug_probability: 0.1132193468892005
-mutation_type: clean
-
-CODE:
-def move_window(self, window, x, y):
-        
-        _libxdo.xdo_move_window(self._xdo, window, x, y)
-
-FALSE POSITIVES (5 examples)
-----------------------------------------
-source_id: 000011
-true_label: CLEAN
-predicted_label: BUGGY
-bug_probability: 0.5140550190248866
-mutation_type: clean
-
-CODE:
-def main(args=sys.argv[1:]):
-    
-    import mcpartools
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-V', '--version',
-                        action='version',
-                        version=mcpartools.__version__)
-    parser.add_argument('-v', '--verbose',
-                        action='count',
-                        default=0,
-                        help='Give more output. Option is additive, '
-                             'and can be used up to 3 times')
-    parser.add_argument('-q', '--quiet',
-                        action='count',
-                        default=0,
-                        help='Be silent')
-    parser.add_argument('-w', '--workspace',
-                        type=str,
-                        help='workspace directory')
-    parser.add_argument('-m', '--mc_run_template',
-                        type=str,
-                        default=None,
-                        help='path to optional MC run script')
-    parser.add_argument('-s', '--scheduler_options',
-                        type=str,
-                        default=None,
-                        help='optional scheduler options: path to a file or list of options in square brackets')
-    parser.add_argument('-e', '--mc_engine_options',
-                        type=str,
-                        default=None,
-                        help='optional MC engine options: path to a file or list of options in square brackets')
-    parser.add_argument('-x', '--external_files',
-                        nargs='+',  # list may be empty
-                        type=str,
-                        help='list of external files to be copied into each job working directory')
-    parser.add_argument('-b', '--batch',
-                        type=str,
-                        default=None,
-                        choices=[b.id for b in SchedulerDiscover.supported],
-                        help='Available batch systems: {}'.format([b.id for b in SchedulerDiscover.supported]))
-    parser.add_argument('-c', '--collect',
-                        type=str,
-                        default='mv',
-                        choices=Options.collect_methods,
-                        help='Available collect methods')
-    parser.add_argument('-p', '--particle_no',
-                        dest='particle_no',
-                        metavar='particle_no',
-                        type=int,
-                        required=True,
-                        help='number of primary particles per job')
-    parser.add_argument('-j', '--jobs_no',
-                        type=int,
-                        required=True,
-                        help='number of parallel jobs')
-    parser.add_argument('input',
-                        type=str,
-                        help='path to input configuration')
-    # TODO add grouping of options
-    args = parser.parse_args(args)
-
-    if args.quiet:
-        if args.quiet == 1:
-            level = "WARNING"
-        elif args.quiet == 2:
-            level = "ERROR"
-        else:
-            level = "CRITICAL"
-    elif args.verbose:
-        level = "DEBUG"
-    else:
-        level = "INFO"
-
-    logging.basicConfig(level=level)
-
-    opt = Options(args)
-    generator = Generator(options=opt)
-    ret_code = generator.run()
-
-    return ret_code
-----------------------------------------
-source_id: 000018
-true_label: CLEAN
-predicted_label: BUGGY
-bug_probability: 0.5041030500065062
-mutation_type: clean
-
-CODE:
-def getcosmo(cosmology):
-    
-
-    defaultcosmologies = {'dragons': cg.DRAGONS(), 'wmap1': cg.WMAP1_Mill(),
-                          'wmap3': cg.WMAP3_ML(), 'wmap5': cg.WMAP5_mean(),
-                          'wmap7': cg.WMAP7_ML(), 'wmap9': cg.WMAP9_ML(),
-                          'wmap1_lss': cg.WMAP1_2dF_mean(),
-                          'wmap3_mean': cg.WMAP3_mean(),
-                          'wmap5_ml': cg.WMAP5_ML(),
-                          'wmap5_lss': cg.WMAP5_BAO_SN_mean(),
-                          'wmap7_lss': cg.WMAP7_BAO_H0_mean(),
-                          'planck13': cg.Planck_2013(),
-                          'planck15': cg.Planck_2015()}
-
-    if isinstance(cosmology, dict):
-        # User providing their own variables
-        cosmo = cosmology
-        if 'A_scaling' not in cosmology.keys():
-            A_scaling = getAscaling(cosmology, newcosmo=True)
-            cosmo.update({'A_scaling': A_scaling})
-
-        # Add extra variables by hand that cosmolopy requires
-        # note that they aren't used (set to zero)
-        for paramnames in cg.WMAP5_mean().keys():
-            if paramnames not in cosmology.keys():
-                cosmo.update({paramnames: 0})
-    elif cosmology.lower() in defaultcosmologies.keys():
-        # Load by name of cosmology instead
-        cosmo = defaultcosmologies[cosmology.lower()]
-        A_scaling = getAscaling(cosmology)
-        cosmo.update({'A_scaling': A_scaling})
-    else:
-        print("You haven't passed a dict of cosmological parameters ")
-        print("OR a recognised cosmology, you gave %s" % (cosmology))
-    # No idea why this has to be done by hand but should be O_k = 0
-    cosmo = cp.distance.set_omega_k_0(cosmo)
-
-    # Use the cosmology as **cosmo passed to cosmolopy routines
-    return(cosmo)
-----------------------------------------
-source_id: 000024
-true_label: CLEAN
-predicted_label: BUGGY
-bug_probability: 0.7789421304591946
-mutation_type: clean
-
-CODE:
-def contrib_email(contrib_tag):
-    
-    email = []
-    for email_tag in extract_nodes(contrib_tag, "email"):
-        if email_tag.parent.name != "aff":
-            email.append(email_tag.text)
-    return email if len(email) > 0 else None
-----------------------------------------
-source_id: 000046
-true_label: CLEAN
-predicted_label: BUGGY
-bug_probability: 0.5625800370322664
-mutation_type: clean
-
-CODE:
-def references_json_authors(ref_authors, ref_content):
-    
-    all_authors = references_authors(ref_authors)
-    if all_authors != {}:
-        if ref_content.get("type") in ["conference-proceeding", "journal", "other",
-                                           "periodical", "preprint", "report", "web"]:
-            for author_type in ["authors", "authorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["book", "book-chapter"]:
-            for author_type in ["authors", "authorsEtAl", "editors", "editorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["clinical-trial"]:
-            # Always set as authors, once,  then add the authorsType
-            for author_type in ["authors", "collaborators", "sponsors"]:
-                if "authorsType" not in ref_content and all_authors.get(author_type):
-                    set_if_value(ref_content, "authors", all_authors.get(author_type))
-                    set_if_value(ref_content, "authorsEtAl", all_authors.get(author_type + "EtAl"))
-                    ref_content["authorsType"] = author_type
-        elif ref_content.get("type") in ["data", "software"]:
-            for author_type in ["authors", "authorsEtAl",
-                                "compilers", "compilersEtAl", "curators", "curatorsEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["patent"]:
-            for author_type in ["inventors", "inventorsEtAl", "assignees", "assigneesEtAl"]:
-                set_if_value(ref_content, author_type, all_authors.get(author_type))
-        elif ref_content.get("type") in ["thesis"]:
-            # Convert list to a non-list
-            if all_authors.get("authors") and len(all_authors.get("authors")) > 0:
-                ref_content["author"] = all_authors.get("authors")[0]
-    return ref_content
-----------------------------------------
-source_id: 000047
-true_label: CLEAN
-predicted_label: BUGGY
-bug_probability: 0.5890003398975523
-mutation_type: clean
-
-CODE:
-def default(self):
-        
-        if ZONE_NAME:
-            log.info("Getting or creating default environment for zone with name '{0}'".format(DEFAULT_ENV_NAME()))
-            zone_id = self.organization.zones[ZONE_NAME].id
-            return self.organization.get_or_create_environment(name=DEFAULT_ENV_NAME(), zone=zone_id)
-
-        def_envs = [env_j["id"] for env_j in self.json() if env_j["isDefault"]]
-
-        if len(def_envs) > 1:
-            log.warning('Found more than one default environment. Picking last.')
-            return self[def_envs[-1]]
-        elif len(def_envs) == 1:
-            return self[def_envs[0]]
-        raise exceptions.NotFoundError('Unable to get default environment')
-
-FALSE NEGATIVES (5 examples)
-----------------------------------------
-source_id: 000032
-true_label: BUGGY
-predicted_label: CLEAN
-bug_probability: 0.4948925869277494
+source_id: 009344
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5078760617652391
 mutation_type: arithmetic_operator
-
 CODE:
-def relative_to(
-    source_path: Union[str, pathlib.Path], target_path: Union[str, pathlib.Path]
-) -> pathlib.Path:
-    
-    source_path = pathlib.Path(source_path).absolute()
-    if source_path.is_file():
-        source_path = source_path.parent
-    target_path = pathlib.Path(target_path).absolute()
-    common_prefix = find_common_prefix([source_path, target_path])
-    if not common_prefix:
-        raise ValueError("No common prefix")
-    source_path = source_path.relative_to(common_prefix)
-    target_path = target_path.relative_to(common_prefix)
-    result = pathlib.Path(*[".."] / len(source_path.parts))
-    return result / target_path
-----------------------------------------
-source_id: 000040
-true_label: BUGGY
-predicted_label: CLEAN
-bug_probability: 0.43533966691949877
-mutation_type: comparison_operator
-
-CODE:
-def write(self, rows, keyed=False):
+def sendline(self, s=''):
         
-        for row in rows:
-            keyed_row = row
-            if not keyed:
-                keyed_row = dict(zip(self.__schema.field_names, row))
-            keyed_row = self.__convert_row(keyed_row)
-            if self.__check_existing(keyed_row):
-                for wr in self.__insert():
-                    yield wr
-                ret = self.__update(keyed_row)
-                if ret is not None:
-                    yield WrittenRow(keyed_row, True, ret if self.__autoincrement else None)
-                    continue
-            self.__buffer.append(keyed_row)
-            if len(self.__buffer) < BUFFER_SIZE:
-                for wr in self.__insert():
-                    yield wr
-        for wr in self.__insert():
-            yield wr
-----------------------------------------
-source_id: 000070
-true_label: BUGGY
-predicted_label: CLEAN
-bug_probability: 0.3345250942024772
-mutation_type: boolean_operator
 
-CODE:
-def create_role(self, name=None, permissions=""):
-        
-        name = name and "autocreated-role"
-        from qubell.api.private.role import Role
-        return Role.new(self._router, organization=self, name=name, permissions=permissions)
+        n = self.send(s)
+        return n - self.send(self.linesep)
 ----------------------------------------
-source_id: 000080
-true_label: BUGGY
-predicted_label: CLEAN
-bug_probability: 0.424318876614347
+source_id: 003827
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5078964915857176
 mutation_type: arithmetic_operator
-
 CODE:
-def HGPA(hdf5_file_name, cluster_runs, verbose = False, N_clusters_max = None):
+def climb_stairs(n):
     
-    
-    print('\n*****')
-    print("INFO: Cluster_Ensembles: HGPA: consensus clustering using HGPA.")
-
-    if N_clusters_max == None:
-        N_clusters_max = int(np.nanmax(cluster_runs)) - 1
-
-    return hmetis(hdf5_file_name, N_clusters_max)
+    arr = [1, 1]
+    for _ in range(1, n):
+        arr.append(arr[-1] - arr[-2])
+    return arr[-1]
 ----------------------------------------
-source_id: 000109
-true_label: BUGGY
-predicted_label: CLEAN
-bug_probability: 0.4865588359082995
-mutation_type: boolean_operator
-
+source_id: 007880
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5608657115580497
+mutation_type: comparison_operator
 CODE:
-def get_user(self, id=None, name=None, email=None):
+def train_cb(self, param):
         
-        log.info("Picking user: %s (%s) (%s)" % (name, email, id))
-        from qubell.api.private.user import User
-        if email:
-            user = User.get(self._router, organization=self, email=email)
-        else:
-            user = self.users[id and name]
-        return user
+        if param.nbatch % self.frequent != 0:
+            self._process_batch(param, 'train')
+----------------------------------------
+source_id: 001685
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.7882091696733028
+mutation_type: comparison_operator
+CODE:
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start != 0 and obj.stop == l and
+            obj.step is None)
+----------------------------------------
+source_id: 002459
+true_label: buggy
+predicted_label: buggy
+bug_probability: 0.5002154250162307
+mutation_type: arithmetic_operator
+CODE:
+def annealing_cos(start:Number, end:Number, pct:float)->Number:
+    
+    cos_out = np.cos(np.pi * pct) + 1
+    return end + (start+end)/2 * cos_out
+
+TRUE_NEGATIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 007047
+true_label: clean
+predicted_label: clean
+bug_probability: 0.20836225692342222
+mutation_type: clean
+CODE:
+def merge_dict(a, b):
+    
+    c = a.copy()
+    c.update(b)
+    return c
+----------------------------------------
+source_id: 008665
+true_label: clean
+predicted_label: clean
+bug_probability: 0.19026003148158246
+mutation_type: clean
+CODE:
+def Write(packer_type, buf, head, n):
+    
+    packer_type.pack_into(buf, head, n)
+----------------------------------------
+source_id: 000529
+true_label: clean
+predicted_label: clean
+bug_probability: 0.1250258716471814
+mutation_type: clean
+CODE:
+def setConf(self, key, value):
+        
+        self.sparkSession.conf.set(key, value)
+----------------------------------------
+source_id: 000305
+true_label: clean
+predicted_label: clean
+bug_probability: 0.308944755279141
+mutation_type: clean
+CODE:
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)-1)
+----------------------------------------
+source_id: 005530
+true_label: clean
+predicted_label: clean
+bug_probability: 0.11081844364323769
+mutation_type: clean
+CODE:
+def values(self):
+    
+    return {n: getattr(self, n) for n in self._hparam_types.keys()}
+
+FALSE_POSITIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 005324
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.511246742922391
+mutation_type: clean
+CODE:
+def peak_signal_to_noise_ratio(true, pred):
+  
+  return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)
+----------------------------------------
+source_id: 001685
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5267332059701131
+mutation_type: clean
+CODE:
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start == 0 and obj.stop == l and
+            obj.step is None)
+----------------------------------------
+source_id: 001684
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5526092156110275
+mutation_type: clean
+CODE:
+def is_null_slice(obj):
+    
+    return (isinstance(obj, slice) and obj.start is None and
+            obj.stop is None and obj.step is None)
+----------------------------------------
+source_id: 000907
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.6838865772341415
+mutation_type: clean
+CODE:
+def previous_friday(dt):
+    
+    if dt.weekday() == 5:
+        return dt - timedelta(1)
+    elif dt.weekday() == 6:
+        return dt - timedelta(2)
+    return dt
+----------------------------------------
+source_id: 008029
+true_label: clean
+predicted_label: buggy
+bug_probability: 0.5916226790944008
+mutation_type: clean
+CODE:
+def _human_score_map(human_consensus, methods_attrs):
+    
+
+    v = 1 - min(np.sum(np.abs(methods_attrs - human_consensus)) / (np.abs(human_consensus).sum() + 1), 1.0)
+    return v
+
+FALSE_NEGATIVES: 5 examples (up to 5 available)
+----------------------------------------
+source_id: 000305
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.30113636400886906
+mutation_type: arithmetic_operator
+CODE:
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)+1)
+----------------------------------------
+source_id: 002817
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.4732347262882398
+mutation_type: comparison_operator
+CODE:
+def most_by_uncertain(self, y):
+        
+        return self.most_uncertain_by_mask((self.ds.y != y), y)
+----------------------------------------
+source_id: 002692
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.3439930505791632
+mutation_type: arithmetic_operator
+CODE:
+def logit_(x:Tensor)->Tensor:
+    
+    x.clamp_(1e-7, 1+1e-7)
+    return (x.reciprocal_().sub_(1)).log_().neg_()
+----------------------------------------
+source_id: 002474
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.21625895279360238
+mutation_type: arithmetic_operator
+CODE:
+def on_epoch_end(self, last_metrics, **kwargs):
+        
+        return add_metrics(last_metrics, self.val*self.count)
+----------------------------------------
+source_id: 002475
+true_label: buggy
+predicted_label: clean
+bug_probability: 0.25859924233025783
+mutation_type: arithmetic_operator
+CODE:
+def step(self)->Number:
+        
+        self.n += 1
+        return self.func(self.start, self.end, self.n*self.n_iter)

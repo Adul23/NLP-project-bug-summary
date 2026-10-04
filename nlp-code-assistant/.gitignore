@@ -9,3 +9,9 @@ models/**
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !models/.gitkeep
+
+.venv-baseline/
+
+.DS_Store
+.ipynb_checkpoints/
+checkpoints/

@@ -1,160 +1,295 @@
 # TF-IDF + Logistic Regression baseline results
 
-Run: 2026-09-28. Completed the character-level baseline only.
+Completed local run: 2026-09-26. The selected model was fitted on training data only; the held-out test set was evaluated once after validation selection.
 
-## Dataset and leakage checks
+## Dataset and provenance
 
-14,743 samples from 10,000 source functions: 10,000 CLEAN and 4,743 BUGGY.
-Buggy mutations: 1,956 comparison, 1,838 arithmetic, and 949 boolean.
+The processed dataset was absent in this checkout. It was generated with the existing preparation pipeline from the first 10,000 valid unique functions in the local CodeSearchNet training shard `data/raw/python/final/jsonl/train/python_train_0.jsonl`. This differs from the older dataset preparation report. No dataset code was executed.
 
-| Split | Source IDs | Samples | CLEAN | BUGGY |
-|---|---:|---:|---:|---:|
-| train | 7,000 | 10,315 | 7,000 | 3,315 |
-| validation | 1,500 | 2,206 | 1,500 | 706 |
-| test | 1,500 | 2,222 | 1,500 | 722 |
+Rows: **15,304**; source IDs: **10,000**; clean: **10,000**; buggy: **5,304**; exact duplicate rows removed: **0**.
 
-Unique source IDs are split 70/15/15 with seed 42. All three pairwise
-source-ID intersections are **zero**. Saved CSVs were checked against the
-original dataset: exact row coverage, valid binary labels, and preserved leading zeros.
+| Mutation | Dataset rows |
+|---|---:|
+| clean | 10,000 |
+| comparison_operator | 2,131 |
+| arithmetic_operator | 1,932 |
+| boolean_operator | 1,241 |
 
-## Validation-only configuration selection
+## Group split
 
-| Character n-grams | Buggy precision | Buggy recall | Buggy F1 |
+| Split | Rows | Source IDs |
+|---|---:|---:|
+| train | 10,703 | 7,000 |
+| validation | 2,286 | 1,500 |
+| test | 2,315 | 1,500 |
+
+Seed 42; proportions 70/15/15 by source ID. All three pairwise source-ID overlaps are **0**.
+
+## Validation selection
+
+Character TF-IDF: max_features=30000, lowercase=False, sublinear_tf=True. Logistic Regression: max_iter=2000, class_weight=balanced, random_state=42.
+
+| N-gram range | Buggy precision | Buggy recall | Buggy F1 |
 |---|---:|---:|---:|
-| (2, 4) | 0.554147 | 0.681303 | 0.611182 |
-| (3, 5) | 0.541806 | 0.688385 | 0.606363 |
-| (3, 6) | 0.529736 | 0.681303 | 0.596035 |
+| (2, 4) | 0.5349 | 0.6819 | 0.5996 |
+| (3, 5) | 0.5178 | 0.6463 | 0.5750 |
+| (3, 6) | 0.5161 | 0.6539 | 0.5769 |
 
-**Selected `(2, 4)`**, by highest validation Buggy F1.
-All configurations used `max_features=30000`, `lowercase=False`,
-`sublinear_tf=True`, and `analyzer="char"`. Logistic Regression used
-`max_iter=2000`, `class_weight="balanced"`, and `random_state=42`.
-TF-IDF and classifiers were fitted only on training data. The selected
-trained model was retained without refitting. Test was evaluated once.
+Selected **(2, 4)** by validation Buggy F1. The test set was not used for selection; no refit was needed.
 
 ## Validation results
 
-Accuracy: **0.722575**.
+Accuracy: **0.6868**.
 
 | Class | Precision | Recall | F1 | Support |
 |---|---:|---:|---:|---:|
-| CLEAN | 0.831839 | 0.742000 | 0.784355 | 1500 |
-| BUGGY | 0.554147 | 0.681303 | 0.611182 | 706 |
+| clean | 0.8053 | 0.6893 | 0.7428 | 1500 |
+| buggy | 0.5349 | 0.6819 | 0.5996 | 786 |
 
-Confusion matrix: rows = true CLEAN/BUGGY, columns = predicted CLEAN/BUGGY.
+Confusion matrix: rows=true CLEAN/BUGGY, columns=predicted CLEAN/BUGGY.
 
 ```text
-[[1113,  387],
- [ 225,  481]]
+[1034, 466]
+[250, 536]
 ```
 
 ## Test results
 
-Accuracy: **0.714221**.
+Accuracy: **0.6864**.
 
 | Class | Precision | Recall | F1 | Support |
 |---|---:|---:|---:|---:|
-| CLEAN | 0.837627 | 0.715333 | 0.771665 | 1500 |
-| BUGGY | 0.546227 | 0.711911 | 0.618160 | 722 |
+| clean | 0.8076 | 0.6773 | 0.7368 | 1500 |
+| buggy | 0.5421 | 0.7031 | 0.6122 | 815 |
 
-Confusion matrix: rows = true CLEAN/BUGGY, columns = predicted CLEAN/BUGGY.
+Confusion matrix: rows=true CLEAN/BUGGY, columns=predicted CLEAN/BUGGY.
 
 ```text
-[[1073,  427],
- [ 208,  514]]
+[1016, 484]
+[242, 573]
 ```
 
-## Test recall by mutation type
+## Test mutation detection
 
-| Mutation type | Samples | Detected correctly | Recall |
+| Mutation | Samples | Correctly detected | Recall |
 |---|---:|---:|---:|
-| arithmetic_operator | 269 | 188 | 0.698885 |
-| boolean_operator | 142 | 77 | 0.542254 |
-| comparison_operator | 311 | 249 | 0.800643 |
+| comparison_operator | 336 | 272 | 0.8095 |
+| arithmetic_operator | 274 | 184 | 0.6715 |
+| boolean_operator | 205 | 117 | 0.5707 |
 
-Comparison mutations have the highest observed detection recall (80.06%);
-boolean mutations have the lowest (54.23%). Overall, 514/722 buggy samples
-were detected, 208 were missed, and 427/1,500 clean samples were flagged.
-Test accuracy is 71.42%, compared with 67.51% for always predicting CLEAN.
-The model detects some synthetic mutation patterns, but false positives remain frequent.
-These results do not establish semantic correctness or real-world bug detection quality.
+Comparison mutations have the highest recall in this run; boolean mutations have the lowest. There are 484 false positives and 242 false negatives. These results measure synthetic mutation detection, not proven detection of real-world bugs. The split prevents original/mutant source-ID overlap but does not separate repositories.
 
 ## Error analysis
 
-The saved examples use the first five test rows in each outcome category,
-without confidence-based cherry-picking. All **20 full examples** include
-`source_id`, true label, predicted label, bug probability, mutation type, and code:
-[complete examples](../results/tfidf_error_examples.txt).
+Five shortest examples from each category are shown with full code. They are illustrative rather than a random or representative sample.
 
-| Outcome | Source ID | True → predicted | Bug probability | Mutation type |
-|---|---|---|---:|---|
-| false positives | `000011` | CLEAN → BUGGY | 0.514055 | clean |
-| false positives | `000018` | CLEAN → BUGGY | 0.504103 | clean |
-| false positives | `000024` | CLEAN → BUGGY | 0.778942 | clean |
-| false positives | `000046` | CLEAN → BUGGY | 0.562580 | clean |
-| false positives | `000047` | CLEAN → BUGGY | 0.589000 | clean |
-| false negatives | `000032` | BUGGY → CLEAN | 0.494893 | arithmetic_operator |
-| false negatives | `000040` | BUGGY → CLEAN | 0.435340 | comparison_operator |
-| false negatives | `000070` | BUGGY → CLEAN | 0.334525 | boolean_operator |
-| false negatives | `000080` | BUGGY → CLEAN | 0.424319 | arithmetic_operator |
-| false negatives | `000109` | BUGGY → CLEAN | 0.486559 | boolean_operator |
+### True Positives
 
-### False Positives: `000024`
-
-CLEAN → BUGGY; bug probability 0.778942; mutation type `clean`.
+Source `009344`; true **buggy**; predicted **buggy**; bug probability **0.5079**; mutation `arithmetic_operator`.
 
 ```python
-def contrib_email(contrib_tag):
-    
-    email = []
-    for email_tag in extract_nodes(contrib_tag, "email"):
-        if email_tag.parent.name != "aff":
-            email.append(email_tag.text)
-    return email if len(email) > 0 else None
-```
-
-### False Negatives: `000070`
-
-BUGGY → CLEAN; bug probability 0.334525; mutation type `boolean_operator`.
-
-```python
-def create_role(self, name=None, permissions=""):
+def sendline(self, s=''):
         
-        name = name and "autocreated-role"
-        from qubell.api.private.role import Role
-        return Role.new(self._router, organization=self, name=name, permissions=permissions)
+
+        n = self.send(s)
+        return n - self.send(self.linesep)
 ```
 
-### False Negatives: `000080`
-
-BUGGY → CLEAN; bug probability 0.424319; mutation type `arithmetic_operator`.
+Source `003827`; true **buggy**; predicted **buggy**; bug probability **0.5079**; mutation `arithmetic_operator`.
 
 ```python
-def HGPA(hdf5_file_name, cluster_runs, verbose = False, N_clusters_max = None):
+def climb_stairs(n):
     
-    
-    print('\n*****')
-    print("INFO: Cluster_Ensembles: HGPA: consensus clustering using HGPA.")
-
-    if N_clusters_max == None:
-        N_clusters_max = int(np.nanmax(cluster_runs)) - 1
-
-    return hmetis(hdf5_file_name, N_clusters_max)
+    arr = [1, 1]
+    for _ in range(1, n):
+        arr.append(arr[-1] - arr[-2])
+    return arr[-1]
 ```
 
-## Artifacts and verification
+Source `007880`; true **buggy**; predicted **buggy**; bug probability **0.5609**; mutation `comparison_operator`.
 
-- [Vectorizer](../models/tfidf_vectorizer.joblib): 30,000 character features.
-- [Logistic Regression](../models/logistic_regression.joblib): matching 30,000 input features; classes `[0, 1]`.
-- [Metrics JSON](../results/tfidf_logistic_regression_metrics.json): all experiment/evaluation values, examples, versions, and dataset hash.
-- [Training log](../results/tfidf_training.log): full printed output.
-- [Pytest log](../results/pytest.log): **45 passed, 31 subtests passed**.
-- `pip check`: no broken requirements found.
-- Saved-model inference on `def calculate_total(price, tax): return price - tax` returned
-  `{"label": "buggy", "bug_probability": 0.514437584491533}`.
+```python
+def train_cb(self, param):
+        
+        if param.nbatch % self.frequent != 0:
+            self._process_batch(param, 'train')
+```
 
-Models and CSVs remain local ignored artifacts, following the existing `.gitignore`.
+Source `001685`; true **buggy**; predicted **buggy**; bug probability **0.7882**; mutation `comparison_operator`.
 
-Versions: python 3.12.3, pandas 2.3.3, numpy 2.5.3, scikit_learn 1.9.1, joblib 1.6.0.
+```python
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start != 0 and obj.stop == l and
+            obj.step is None)
+```
 
-Dataset SHA-256: `0734fa6e3a65830d2981878afec8fbbcfcc8cddec552dab633727efdf7925120`.
+Source `002459`; true **buggy**; predicted **buggy**; bug probability **0.5002**; mutation `arithmetic_operator`.
+
+```python
+def annealing_cos(start:Number, end:Number, pct:float)->Number:
+    
+    cos_out = np.cos(np.pi * pct) + 1
+    return end + (start+end)/2 * cos_out
+```
+
+
+### True Negatives
+
+Source `007047`; true **clean**; predicted **clean**; bug probability **0.2084**; mutation `clean`.
+
+```python
+def merge_dict(a, b):
+    
+    c = a.copy()
+    c.update(b)
+    return c
+```
+
+Source `008665`; true **clean**; predicted **clean**; bug probability **0.1903**; mutation `clean`.
+
+```python
+def Write(packer_type, buf, head, n):
+    
+    packer_type.pack_into(buf, head, n)
+```
+
+Source `000529`; true **clean**; predicted **clean**; bug probability **0.1250**; mutation `clean`.
+
+```python
+def setConf(self, key, value):
+        
+        self.sparkSession.conf.set(key, value)
+```
+
+Source `000305`; true **clean**; predicted **clean**; bug probability **0.3089**; mutation `clean`.
+
+```python
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)-1)
+```
+
+Source `005530`; true **clean**; predicted **clean**; bug probability **0.1108**; mutation `clean`.
+
+```python
+def values(self):
+    
+    return {n: getattr(self, n) for n in self._hparam_types.keys()}
+```
+
+
+### False Positives
+
+Source `005324`; true **clean**; predicted **buggy**; bug probability **0.5112**; mutation `clean`.
+
+```python
+def peak_signal_to_noise_ratio(true, pred):
+  
+  return 10.0 * tf.log(1.0 / mean_squared_error(true, pred)) / tf.log(10.0)
+```
+
+Source `001685`; true **clean**; predicted **buggy**; bug probability **0.5267**; mutation `clean`.
+
+```python
+def is_full_slice(obj, l):
+    
+    return (isinstance(obj, slice) and obj.start == 0 and obj.stop == l and
+            obj.step is None)
+```
+
+Source `001684`; true **clean**; predicted **buggy**; bug probability **0.5526**; mutation `clean`.
+
+```python
+def is_null_slice(obj):
+    
+    return (isinstance(obj, slice) and obj.start is None and
+            obj.stop is None and obj.step is None)
+```
+
+Source `000907`; true **clean**; predicted **buggy**; bug probability **0.6839**; mutation `clean`.
+
+```python
+def previous_friday(dt):
+    
+    if dt.weekday() == 5:
+        return dt - timedelta(1)
+    elif dt.weekday() == 6:
+        return dt - timedelta(2)
+    return dt
+```
+
+Source `008029`; true **clean**; predicted **buggy**; bug probability **0.5916**; mutation `clean`.
+
+```python
+def _human_score_map(human_consensus, methods_attrs):
+    
+
+    v = 1 - min(np.sum(np.abs(methods_attrs - human_consensus)) / (np.abs(human_consensus).sum() + 1), 1.0)
+    return v
+```
+
+
+### False Negatives
+
+Source `000305`; true **buggy**; predicted **clean**; bug probability **0.3011**; mutation `arithmetic_operator`.
+
+```python
+def heappush(heap, item):
+    
+    heap.append(item)
+    _siftdown(heap, 0, len(heap)+1)
+```
+
+Source `002817`; true **buggy**; predicted **clean**; bug probability **0.4732**; mutation `comparison_operator`.
+
+```python
+def most_by_uncertain(self, y):
+        
+        return self.most_uncertain_by_mask((self.ds.y != y), y)
+```
+
+Source `002692`; true **buggy**; predicted **clean**; bug probability **0.3440**; mutation `arithmetic_operator`.
+
+```python
+def logit_(x:Tensor)->Tensor:
+    
+    x.clamp_(1e-7, 1+1e-7)
+    return (x.reciprocal_().sub_(1)).log_().neg_()
+```
+
+Source `002474`; true **buggy**; predicted **clean**; bug probability **0.2163**; mutation `arithmetic_operator`.
+
+```python
+def on_epoch_end(self, last_metrics, **kwargs):
+        
+        return add_metrics(last_metrics, self.val*self.count)
+```
+
+Source `002475`; true **buggy**; predicted **clean**; bug probability **0.2586**; mutation `arithmetic_operator`.
+
+```python
+def step(self)->Number:
+        
+        self.n += 1
+        return self.func(self.start, self.end, self.n*self.n_iter)
+```
+
+## Saved artifacts and verification
+
+- Vectorizer: `models/tfidf_vectorizer.joblib`
+- Classifier: `models/logistic_regression.joblib`
+- Metrics: `results/tfidf_logistic_regression_metrics.json`
+- Predictions: `results/tfidf_test_predictions.csv`
+- Examples: `results/tfidf_error_examples.txt`
+- Complete training log: `results/baseline_run.log`
+- Test log: `results/pytest_results.txt`
+
+`python -m pytest -v`: **39 passed, 31 subtests passed**.
+
+The regression suite checks input rejection, exact duplicates, preserved source-ID zeros, grouped split coverage/reproducibility, overlap detection, fitted TF-IDF, predictions/probabilities, model serialization, validation-only selection, and exactly one final test evaluation.
+
+Dataset SHA-256: `6e9453faff38fffe80e55ba88bfcaa20f9a1404ea6eae683662d9463796bfbeb`.
+
+Package versions: pandas=2.3.3, scikit-learn=1.9.1, numpy=2.5.3, joblib=1.6.0.
