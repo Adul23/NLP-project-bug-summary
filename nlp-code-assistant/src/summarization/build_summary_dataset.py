@@ -132,6 +132,12 @@ def load_clean_code(path: Path) -> dict[str, str]:
     return dict(zip(df["source_id"], df["code"]))
 
 
+def summary_leaks_into_code(summary: str, code: str) -> bool:
+    """True if the target summary appears verbatim (case-insensitive) in the input code."""
+    target = summary.strip().lower()
+    return bool(target) and target in code.lower()
+
+
 def build(args: argparse.Namespace) -> None:
     split_map = load_split_map(args.split_dir)
     clean_code = load_clean_code(args.clean)
@@ -162,6 +168,9 @@ def build(args: argparse.Namespace) -> None:
             code = clean_code[source_id]
             if not code.strip():
                 raise ValueError(f"empty code for source_id {source_id}")
+            if summary_leaks_into_code(summary, code):
+                reasons["summary_in_code"] += 1
+                continue
             rows.append(
                 {
                     "source_id": source_id,

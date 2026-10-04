@@ -213,3 +213,11 @@ def test_build_fails_when_source_id_missing_from_split(tmp_path):
 
     with pytest.raises(ValueError, match="000009"):
         bsd.build(make_args(tmp_path, raw, clean))
+
+
+def test_summary_leaking_into_code_is_detected():
+    code = "def f(self):\n    # Generate Cannon gradient spectra\n    return 1"
+    assert bsd.summary_leaks_into_code("Generate Cannon gradient spectra", code)
+    assert bsd.summary_leaks_into_code("return (images, sounds)", "return (images, sounds)")
+    assert not bsd.summary_leaks_into_code("Compute the total", code)
+    assert not bsd.summary_leaks_into_code("   ", code)
