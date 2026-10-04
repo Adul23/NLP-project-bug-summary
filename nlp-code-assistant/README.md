@@ -1,4 +1,4 @@
-# NLP Code Assistant — подготовка данных
+# NLP Code Assistant — подготовка данных и TF-IDF baseline
 
 Конвейер собирает **10 000 уникальных Python-функций CodeSearchNet** и создаёт
 не более одной синтетической версии каждой функции. `label=0` — исходная
@@ -7,7 +7,6 @@
 
 Previous run: **10,000 clean + 4,743 buggy = 14,743 rows**.
 Current local run: **10,000 clean + 5,304 buggy = 15,304 rows**; see the baseline section below.
-Подробности и проблемы разбора — в [отчёте запуска](docs/data-preparation-results.md).
 
 ## Запуск
 
@@ -36,6 +35,9 @@ python src/data/build_dataset.py
 | `src/data/preprocess.py` | Очистка, AST-проверка, дедупликация, `source_id` |
 | `src/data/mutations.py` | Одна мутация AST с сохранением оформления |
 | `src/data/build_dataset.py` | Сборка, проверки качества, статистика и примеры |
+| `src/bug_detection/split_dataset.py` | Разбиение 70/15/15 по `source_id` |
+| `src/bug_detection/train_tfidf.py` | Обучение, выбор конфигурации, оценка и сохранение моделей |
+| `src/bug_detection/predict_tfidf.py` | `predict_bug(code)` для нового Python-кода |
 | `data/raw/codesearchnet/python_functions.jsonl` | Обработанные исходные записи и происхождение |
 | `data/raw/codesearchnet/python_functions.manifest.json` | Ревизия, URL, seed, версии библиотек и счётчики |
 | `data/processed/clean_functions.csv` | `source_id,code,label,mutation_type` |
@@ -137,7 +139,7 @@ df = pd.read_csv(
 ```
 
 ```bash
-python -m unittest discover -s tests -v
+pytest -v
 ```
 
 Source-ID splitting, training, and evaluation are implemented in the baseline below.
