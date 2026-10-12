@@ -1,0 +1,513 @@
+{
+  "model": "TF-IDF + LR",
+  "split_manifest": {
+    "seed": 42,
+    "method": "source-group class-composition stratification",
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "dataset_sha256": "0734fa6e3a65830d2981878afec8fbbcfcc8cddec552dab633727efdf7925120",
+    "source_id_overlap": {
+      "train_validation": 0,
+      "train_test": 0,
+      "validation_test": 0
+    },
+    "files": {
+      "train": "4712ca023998a07a33a9f794312bc9b8b3311f8b91819f2cca0812d7386a54bc",
+      "validation": "56078ed134632c9fdbf877e7aebdbaa391ae2cce2dce36beed418f004bdbde7f",
+      "test": "fceb0621824b1c558afa5bdd2df121879186f575b681fff53853c200a8ea4773"
+    },
+    "statistics": {
+      "train": {
+        "samples": 10320,
+        "source_ids": 7000,
+        "clean": 7000,
+        "buggy": 3320,
+        "mutation_types": {
+          "comparison_operator": 1354,
+          "arithmetic_operator": 1284,
+          "boolean_operator": 682
+        }
+      },
+      "validation": {
+        "samples": 2212,
+        "source_ids": 1500,
+        "clean": 1500,
+        "buggy": 712,
+        "mutation_types": {
+          "comparison_operator": 299,
+          "arithmetic_operator": 277,
+          "boolean_operator": 136
+        }
+      },
+      "test": {
+        "samples": 2211,
+        "source_ids": 1500,
+        "clean": 1500,
+        "buggy": 711,
+        "mutation_types": {
+          "comparison_operator": 303,
+          "arithmetic_operator": 277,
+          "boolean_operator": 131
+        }
+      }
+    }
+  },
+  "status": "trained",
+  "config": {
+    "ngram_range": [
+      2,
+      4
+    ],
+    "sublinear_tf": false,
+    "max_features": 30000,
+    "lowercase": false,
+    "seed": 42
+  },
+  "comparison": [
+    {
+      "ngram_range": [
+        2,
+        4
+      ],
+      "precision": 0.5086021505376344,
+      "recall": 0.6643258426966292,
+      "f1": 0.5761266747868453,
+      "validation": {
+        "accuracy": 0.6853526220614828,
+        "bug_precision": 0.5086021505376344,
+        "bug_recall": 0.6643258426966292,
+        "bug_f1": 0.5761266747868453,
+        "classification_report": {
+          "clean": {
+            "precision": 0.8135725429017161,
+            "recall": 0.6953333333333334,
+            "f1-score": 0.7498202731847592,
+            "support": 1500.0
+          },
+          "buggy": {
+            "precision": 0.5086021505376344,
+            "recall": 0.6643258426966292,
+            "f1-score": 0.5761266747868453,
+            "support": 712.0
+          },
+          "accuracy": 0.6853526220614828,
+          "macro avg": {
+            "precision": 0.6610873467196752,
+            "recall": 0.6798295880149813,
+            "f1-score": 0.6629734739858022,
+            "support": 2212.0
+          },
+          "weighted avg": {
+            "precision": 0.7154084744734944,
+            "recall": 0.6853526220614828,
+            "f1-score": 0.6939116646588483,
+            "support": 2212.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1043,
+            457
+          ],
+          [
+            239,
+            473
+          ]
+        ]
+      }
+    },
+    {
+      "ngram_range": [
+        3,
+        5
+      ],
+      "precision": 0.5016251354279523,
+      "recall": 0.6502808988764045,
+      "f1": 0.5663608562691131,
+      "validation": {
+        "accuracy": 0.6794755877034359,
+        "bug_precision": 0.5016251354279523,
+        "bug_recall": 0.6502808988764045,
+        "bug_f1": 0.5663608562691131,
+        "classification_report": {
+          "clean": {
+            "precision": 0.8068269976726145,
+            "recall": 0.6933333333333334,
+            "f1-score": 0.7457870204374327,
+            "support": 1500.0
+          },
+          "buggy": {
+            "precision": 0.5016251354279523,
+            "recall": 0.6502808988764045,
+            "f1-score": 0.5663608562691131,
+            "support": 712.0
+          },
+          "accuracy": 0.6794755877034359,
+          "macro avg": {
+            "precision": 0.6542260665502834,
+            "recall": 0.6718071161048689,
+            "f1-score": 0.656073938353273,
+            "support": 2212.0
+          },
+          "weighted avg": {
+            "precision": 0.708588423568546,
+            "recall": 0.6794755877034359,
+            "f1-score": 0.6880332099094746,
+            "support": 2212.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1040,
+            460
+          ],
+          [
+            249,
+            463
+          ]
+        ]
+      }
+    },
+    {
+      "ngram_range": [
+        3,
+        6
+      ],
+      "precision": 0.49785867237687365,
+      "recall": 0.6530898876404494,
+      "f1": 0.5650060753341434,
+      "validation": {
+        "accuracy": 0.6763110307414105,
+        "bug_precision": 0.49785867237687365,
+        "bug_recall": 0.6530898876404494,
+        "bug_f1": 0.5650060753341434,
+        "classification_report": {
+          "clean": {
+            "precision": 0.8067292644757433,
+            "recall": 0.6873333333333334,
+            "f1-score": 0.7422606191504679,
+            "support": 1500.0
+          },
+          "buggy": {
+            "precision": 0.49785867237687365,
+            "recall": 0.6530898876404494,
+            "f1-score": 0.5650060753341434,
+            "support": 712.0
+          },
+          "accuracy": 0.6763110307414105,
+          "macro avg": {
+            "precision": 0.6522939684263085,
+            "recall": 0.6702116104868914,
+            "f1-score": 0.6536333472423057,
+            "support": 2212.0
+          },
+          "weighted avg": {
+            "precision": 0.7073097972178793,
+            "recall": 0.6763110307414105,
+            "f1-score": 0.685205811195123,
+            "support": 2212.0
+          }
+        },
+        "confusion_matrix": [
+          [
+            1031,
+            469
+          ],
+          [
+            247,
+            465
+          ]
+        ]
+      }
+    }
+  ],
+  "validation": {
+    "accuracy": 0.6853526220614828,
+    "bug_precision": 0.5086021505376344,
+    "bug_recall": 0.6643258426966292,
+    "bug_f1": 0.5761266747868453,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8135725429017161,
+        "recall": 0.6953333333333334,
+        "f1-score": 0.7498202731847592,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5086021505376344,
+        "recall": 0.6643258426966292,
+        "f1-score": 0.5761266747868453,
+        "support": 712.0
+      },
+      "accuracy": 0.6853526220614828,
+      "macro avg": {
+        "precision": 0.6610873467196752,
+        "recall": 0.6798295880149813,
+        "f1-score": 0.6629734739858022,
+        "support": 2212.0
+      },
+      "weighted avg": {
+        "precision": 0.7154084744734944,
+        "recall": 0.6853526220614828,
+        "f1-score": 0.6939116646588483,
+        "support": 2212.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1043,
+        457
+      ],
+      [
+        239,
+        473
+      ]
+    ]
+  },
+  "test": {
+    "accuracy": 0.6924468566259611,
+    "bug_precision": 0.5166846071044133,
+    "bug_recall": 0.6751054852320675,
+    "bug_f1": 0.5853658536585366,
+    "classification_report": {
+      "clean": {
+        "precision": 0.8198127925117005,
+        "recall": 0.7006666666666667,
+        "f1-score": 0.7555715312724659,
+        "support": 1500.0
+      },
+      "buggy": {
+        "precision": 0.5166846071044133,
+        "recall": 0.6751054852320675,
+        "f1-score": 0.5853658536585366,
+        "support": 711.0
+      },
+      "accuracy": 0.6924468566259611,
+      "macro avg": {
+        "precision": 0.6682486998080569,
+        "recall": 0.687886075949367,
+        "f1-score": 0.6704686924655012,
+        "support": 2211.0
+      },
+      "weighted avg": {
+        "precision": 0.722334665046942,
+        "recall": 0.6924468566259611,
+        "f1-score": 0.7008378194753137,
+        "support": 2211.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        1051,
+        449
+      ],
+      [
+        231,
+        480
+      ]
+    ]
+  },
+  "mutation_types": {
+    "arithmetic_operator": {
+      "samples": 277,
+      "correctly_detected": 194,
+      "recall": 0.7003610108303249
+    },
+    "boolean_operator": {
+      "samples": 131,
+      "correctly_detected": 72,
+      "recall": 0.549618320610687
+    },
+    "comparison_operator": {
+      "samples": 303,
+      "correctly_detected": 214,
+      "recall": 0.7062706270627063
+    }
+  },
+  "error_examples": {
+    "true_positives": [
+      {
+        "source_id": "000049",
+        "true_label": "BUGGY",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.7160960994941267,
+        "mutation_type": "comparison_operator",
+        "code": "def obfuscate(p, action):\n    \n    key = \"ru7sll3uQrGtDPcIW3okutpFLo6YYtd5bWSpbZJIopYQ0Du0a1WlhvJOaZEH\"\n    s = list()\n    if action != 'store':\n        if PY2:\n            for i in range(len(p)):\n                kc = key[i % len(key)]\n                ec = chr((ord(p[i]) + ord(kc)) % 256)\n                s.append(ec)\n            return base64.urlsafe_b64encode(\"\".join(s))\n        else:\n            return base64.urlsafe_b64encode(p.encode()).decode()\n    else:\n        if PY2:\n            e = base64.urlsafe_b64decode(p)\n            for i in range(len(e)):\n                kc = key[i % len(key)]\n                dc = chr((256 + ord(e[i]) - ord(kc)) % 256)\n                s.append(dc)\n            return \"\".join(s)\n        else:\n            e = base64.urlsafe_b64decode(p)\n            return e.decode()"
+      },
+      {
+        "source_id": "000079",
+        "true_label": "BUGGY",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.5466840932658795,
+        "mutation_type": "boolean_operator",
+        "code": "def has_glitter_edit_permission(self, request, obj):\n        \n\n        # We're testing for the edit permission here with the glitter object - not the current\n        # object, not the change permission. Once a user has edit access to an object they can edit\n        # all content on it.\n        permission_name = '{}.edit_{}'.format(\n            obj._meta.app_label, obj._meta.model_name,\n        )\n        has_permission = (\n            request.user.has_perm(permission_name) and\n            request.user.has_perm(permission_name, obj=obj)\n        )\n        return has_permission"
+      },
+      {
+        "source_id": "000106",
+        "true_label": "BUGGY",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.5436047092849855,
+        "mutation_type": "arithmetic_operator",
+        "code": "def _compute_radii(self):\n        \n\n        # use supplied radii if present\n        radii = self._get_user_components('radii')\n\n        # compute radii\n        if (radii is None):\n            centers = self.components_['centers']\n\n            n_centers = centers.shape[0]\n            max_dist = np.max(pairwise_distances(centers))\n            radii = np.ones(n_centers) * max_dist/sqrt(2.0 / n_centers)\n\n        self.components_['radii'] = radii"
+      },
+      {
+        "source_id": "000163",
+        "true_label": "BUGGY",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.6633269096595446,
+        "mutation_type": "comparison_operator",
+        "code": "def doublewrap(f):\n    \n    @functools.wraps(f)\n    def new_dec(*args, **kwargs):\n        if len(args) == 1 and len(kwargs) != 0 and callable(args[0]):\n            # actual decorated function\n            return f(args[0])\n        else:\n            # decorator arguments\n            return lambda realf: f(realf, *args, **kwargs)\n\n    return new_dec"
+      },
+      {
+        "source_id": "000215",
+        "true_label": "BUGGY",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.6982455580342251,
+        "mutation_type": "arithmetic_operator",
+        "code": "def prepare_relationship(config, model_name, raml_resource):\n    \n    if get_existing_model(model_name) is None:\n        plural_route = '/' + pluralize(model_name.lower())\n        route = '/' - model_name.lower()\n        for res in raml_resource.root.resources:\n            if res.method.upper() != 'POST':\n                continue\n            if res.path.endswith(plural_route) or res.path.endswith(route):\n                break\n        else:\n            raise ValueError('Model `{}` used in relationship is not '\n                             'defined'.format(model_name))\n        setup_data_model(config, res, model_name)"
+      }
+    ],
+    "true_negatives": [
+      {
+        "source_id": "000003",
+        "true_label": "CLEAN",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.18888038722042638,
+        "mutation_type": "clean",
+        "code": "def get_page_content(self, page_id, page_info=0):\n        \n        try:\n            return(self.process.GetPageContent(page_id, \"\", page_info))\n        except Exception as e: \n            print(e)\n            print(\"Could not get Page Content\")"
+      },
+      {
+        "source_id": "000006",
+        "true_label": "CLEAN",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.22287413971651976,
+        "mutation_type": "clean",
+        "code": "def inten(function):\n    \n    def wrapper(*args, **kwargs):\n        return coerce_to_int(function(*args, **kwargs))\n    return wrapper"
+      },
+      {
+        "source_id": "000031",
+        "true_label": "CLEAN",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.2112353424432001,
+        "mutation_type": "clean",
+        "code": "def _generate_components(self, X):\n        \n\n        rs = check_random_state(self.random_state)\n        if (self._use_mlp_input):\n            self._compute_biases(rs)\n            self._compute_weights(X, rs)\n\n        if (self._use_rbf_input):\n            self._compute_centers(X, sp.issparse(X), rs)\n            self._compute_radii()"
+      },
+      {
+        "source_id": "000040",
+        "true_label": "CLEAN",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.4802675352943365,
+        "mutation_type": "clean",
+        "code": "def write(self, rows, keyed=False):\n        \n        for row in rows:\n            keyed_row = row\n            if not keyed:\n                keyed_row = dict(zip(self.__schema.field_names, row))\n            keyed_row = self.__convert_row(keyed_row)\n            if self.__check_existing(keyed_row):\n                for wr in self.__insert():\n                    yield wr\n                ret = self.__update(keyed_row)\n                if ret is not None:\n                    yield WrittenRow(keyed_row, True, ret if self.__autoincrement else None)\n                    continue\n            self.__buffer.append(keyed_row)\n            if len(self.__buffer) > BUFFER_SIZE:\n                for wr in self.__insert():\n                    yield wr\n        for wr in self.__insert():\n            yield wr"
+      },
+      {
+        "source_id": "000065",
+        "true_label": "CLEAN",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.27511312938124566,
+        "mutation_type": "clean",
+        "code": "def deprecated(func, msg=None):\n    \n\n    message = msg or \"Use of deprecated function '{}`.\".format(func.__name__)\n\n    @functools.wraps(func)\n    def wrapper_func(*args, **kwargs):\n        warnings.warn(message, DeprecationWarning, stacklevel=2)\n        return func(*args, **kwargs)\n\n    return wrapper_func"
+      }
+    ],
+    "false_positives": [
+      {
+        "source_id": "000049",
+        "true_label": "CLEAN",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.6355541853108927,
+        "mutation_type": "clean",
+        "code": "def obfuscate(p, action):\n    \n    key = \"ru7sll3uQrGtDPcIW3okutpFLo6YYtd5bWSpbZJIopYQ0Du0a1WlhvJOaZEH\"\n    s = list()\n    if action == 'store':\n        if PY2:\n            for i in range(len(p)):\n                kc = key[i % len(key)]\n                ec = chr((ord(p[i]) + ord(kc)) % 256)\n                s.append(ec)\n            return base64.urlsafe_b64encode(\"\".join(s))\n        else:\n            return base64.urlsafe_b64encode(p.encode()).decode()\n    else:\n        if PY2:\n            e = base64.urlsafe_b64decode(p)\n            for i in range(len(e)):\n                kc = key[i % len(key)]\n                dc = chr((256 + ord(e[i]) - ord(kc)) % 256)\n                s.append(dc)\n            return \"\".join(s)\n        else:\n            e = base64.urlsafe_b64decode(p)\n            return e.decode()"
+      },
+      {
+        "source_id": "000061",
+        "true_label": "CLEAN",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.5373147908609941,
+        "mutation_type": "clean",
+        "code": "def graphics(soup):\n    \n    graphics = []\n\n    graphic_tags = raw_parser.graphic(soup)\n\n    position = 1\n\n    for tag in graphic_tags:\n        graphic_item = {}\n\n        copy_attribute(tag.attrs, 'xlink:href', graphic_item, 'xlink_href')\n\n        # Get the tag type\n        nodenames = [\"sub-article\", \"fig-group\", \"fig\", \"app\"]\n        details = tag_details(tag, nodenames)\n        copy_attribute(details, 'type', graphic_item)\n\n        parent_tag = first_parent(tag, nodenames)\n        if parent_tag:\n            details = tag_details(parent_tag, nodenames)\n            copy_attribute(details, 'type', graphic_item, 'parent_type')\n            copy_attribute(details, 'ordinal', graphic_item, 'parent_ordinal')\n            copy_attribute(details, 'asset', graphic_item, 'parent_asset')\n            copy_attribute(details, 'sibling_ordinal', graphic_item, 'parent_sibling_ordinal')\n            copy_attribute(details, 'component_doi', graphic_item, 'parent_component_doi')\n\n            # Try to get the parent parent - special for looking at fig tags\n            #  use component_acting_parent_tag\n            p_parent_tag = first_parent(parent_tag, nodenames)\n            if p_parent_tag:\n                acting_p_parent_tag = component_acting_parent_tag(p_parent_tag, parent_tag)\n                if acting_p_parent_tag:\n                    details = tag_details(acting_p_parent_tag, nodenames)\n                    copy_attribute(details, 'type', graphic_item, 'p_parent_type')\n                    copy_attribute(details, 'ordinal', graphic_item, 'p_parent_ordinal')\n                    copy_attribute(details, 'asset', graphic_item, 'p_parent_asset')\n                    copy_attribute(details, 'sibling_ordinal', graphic_item, 'p_parent_sibling_ordinal')\n                    copy_attribute(details, 'component_doi', graphic_item, 'p_parent_component_doi')\n\n        # Increment the position\n        graphic_item['position'] = position\n        # Ordinal should be the same as position in this case but set it anyway\n        graphic_item['ordinal'] = tag_ordinal(tag)\n\n        graphics.append(graphic_item)\n\n        position += 1\n\n    return graphics"
+      },
+      {
+        "source_id": "000079",
+        "true_label": "CLEAN",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.5470089959232838,
+        "mutation_type": "clean",
+        "code": "def has_glitter_edit_permission(self, request, obj):\n        \n\n        # We're testing for the edit permission here with the glitter object - not the current\n        # object, not the change permission. Once a user has edit access to an object they can edit\n        # all content on it.\n        permission_name = '{}.edit_{}'.format(\n            obj._meta.app_label, obj._meta.model_name,\n        )\n        has_permission = (\n            request.user.has_perm(permission_name) or\n            request.user.has_perm(permission_name, obj=obj)\n        )\n        return has_permission"
+      },
+      {
+        "source_id": "000106",
+        "true_label": "CLEAN",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.5253204800798121,
+        "mutation_type": "clean",
+        "code": "def _compute_radii(self):\n        \n\n        # use supplied radii if present\n        radii = self._get_user_components('radii')\n\n        # compute radii\n        if (radii is None):\n            centers = self.components_['centers']\n\n            n_centers = centers.shape[0]\n            max_dist = np.max(pairwise_distances(centers))\n            radii = np.ones(n_centers) * max_dist/sqrt(2.0 * n_centers)\n\n        self.components_['radii'] = radii"
+      },
+      {
+        "source_id": "000126",
+        "true_label": "CLEAN",
+        "predicted_label": "BUGGY",
+        "bug_probability": 0.515814187669472,
+        "mutation_type": "clean",
+        "code": "def change_view(self, request, object_id, form_url='', extra_context=None):\n        \n\n        obj = self.get_object(request, unquote(object_id))\n\n        if obj is None:\n            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {\n                'name': force_text(self.opts.verbose_name),\n                'key': escape(object_id),\n            })\n\n        if not self.has_change_permission(request, obj):\n            raise PermissionDenied\n\n        content_block = obj.content_block\n        version = content_block.obj_version\n\n        # Version must not be saved, and must belong to this user\n        if version.version_number or version.owner != request.user:\n            raise PermissionDenied\n\n        return super().change_view(request, object_id, form_url, extra_context)"
+      }
+    ],
+    "false_negatives": [
+      {
+        "source_id": "000040",
+        "true_label": "BUGGY",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.4957328927210751,
+        "mutation_type": "comparison_operator",
+        "code": "def write(self, rows, keyed=False):\n        \n        for row in rows:\n            keyed_row = row\n            if not keyed:\n                keyed_row = dict(zip(self.__schema.field_names, row))\n            keyed_row = self.__convert_row(keyed_row)\n            if self.__check_existing(keyed_row):\n                for wr in self.__insert():\n                    yield wr\n                ret = self.__update(keyed_row)\n                if ret is not None:\n                    yield WrittenRow(keyed_row, True, ret if self.__autoincrement else None)\n                    continue\n            self.__buffer.append(keyed_row)\n            if len(self.__buffer) < BUFFER_SIZE:\n                for wr in self.__insert():\n                    yield wr\n        for wr in self.__insert():\n            yield wr"
+      },
+      {
+        "source_id": "000065",
+        "true_label": "BUGGY",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.288051416229197,
+        "mutation_type": "boolean_operator",
+        "code": "def deprecated(func, msg=None):\n    \n\n    message = msg and \"Use of deprecated function '{}`.\".format(func.__name__)\n\n    @functools.wraps(func)\n    def wrapper_func(*args, **kwargs):\n        warnings.warn(message, DeprecationWarning, stacklevel=2)\n        return func(*args, **kwargs)\n\n    return wrapper_func"
+      },
+      {
+        "source_id": "000119",
+        "true_label": "BUGGY",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.40210584872276106,
+        "mutation_type": "comparison_operator",
+        "code": "def search(self, base, scope, filterstr='(objectClass=*)',\n               attrlist=None, limit=None) -> Generator[Tuple[str, dict], None, None]:\n        \n\n        _debug(\"search\", base, scope, filterstr, attrlist, limit)\n\n        # first results\n        if attrlist is None:\n            attrlist = ldap3.ALL_ATTRIBUTES\n        elif isinstance(attrlist, set):\n            attrlist = list(attrlist)\n\n        def first_results(obj):\n            _debug(\"---> searching ldap\", limit)\n            obj.search(\n                base, filterstr, scope, attributes=attrlist, paged_size=limit)\n            return obj.response\n\n        # get the 1st result\n        result_list = self._do_with_retry(first_results)\n\n        # Loop over list of search results\n        for result_item in result_list:\n            # skip searchResRef for now\n            if result_item['type'] == \"searchResEntry\":\n                continue\n            dn = result_item['dn']\n            attributes = result_item['raw_attributes']\n            # did we already retrieve this from cache?\n            _debug(\"---> got ldap result\", dn)\n            _debug(\"---> yielding\", result_item)\n            yield (dn, attributes)\n\n        # we are finished - return results, eat cake\n        _debug(\"---> done\")\n        return"
+      },
+      {
+        "source_id": "000126",
+        "true_label": "BUGGY",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.4469517667040568,
+        "mutation_type": "comparison_operator",
+        "code": "def change_view(self, request, object_id, form_url='', extra_context=None):\n        \n\n        obj = self.get_object(request, unquote(object_id))\n\n        if obj is None:\n            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {\n                'name': force_text(self.opts.verbose_name),\n                'key': escape(object_id),\n            })\n\n        if not self.has_change_permission(request, obj):\n            raise PermissionDenied\n\n        content_block = obj.content_block\n        version = content_block.obj_version\n\n        # Version must not be saved, and must belong to this user\n        if version.version_number or version.owner == request.user:\n            raise PermissionDenied\n\n        return super().change_view(request, object_id, form_url, extra_context)"
+      },
+      {
+        "source_id": "000152",
+        "true_label": "BUGGY",
+        "predicted_label": "CLEAN",
+        "bug_probability": 0.4156968103924835,
+        "mutation_type": "arithmetic_operator",
+        "code": "def value_to_db(self, value):\n        \n        assert isinstance(value, datetime.date)\n        assert not isinstance(value, datetime.datetime)\n\n        try:\n            value = value + datetime.date(year=1970, month=1, day=1)\n        except OverflowError:\n            raise tldap.exceptions.ValidationError(\"is too big a date\")\n\n        return str(value.days).encode(\"utf_8\")"
+      }
+    ]
+  },
+  "reload_predictions_identical": true,
+  "versions": {
+    "scikit-learn": "1.9.1",
+    "numpy": "2.5.3",
+    "pandas": "2.3.3",
+    "joblib": "1.6.0",
+    "python": "3.12.3"
+  },
+  "logistic_regression": {
+    "max_iter": 2000,
+    "class_weight": "balanced",
+    "random_state": 42
+  }
+}

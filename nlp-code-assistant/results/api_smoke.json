@@ -1,0 +1,40 @@
+{
+  "health": {
+    "status": "ok",
+    "models": {
+      "tfidf": {
+        "status": "artifacts_present_not_loaded"
+      },
+      "codebert": {
+        "status": "unavailable"
+      },
+      "summarizer": {
+        "status": "unavailable"
+      }
+    }
+  },
+  "predict": {
+    "status_code": 200,
+    "body": {
+      "label": "BUGGY",
+      "bug_probability": 0.8881098938936314,
+      "confidence": 0.8881098938936314,
+      "model": "tfidf"
+    }
+  },
+  "analyze": {
+    "status_code": 200,
+    "body": {
+      "label": "BUGGY",
+      "bug_probability": 0.8881098938936314,
+      "confidence": 0.8881098938936314,
+      "model": "tfidf",
+      "is_buggy": true,
+      "bug_type": "comparison_operator_change",
+      "explanation": "Synthetic mutation: comparison operator changed from `==` to `!=` on line 1. This may alter behavior; an actual failure is not established.",
+      "suggested_fix": null,
+      "explanation_source": "verified_code_pair",
+      "verified": true
+    }
+  }
+}

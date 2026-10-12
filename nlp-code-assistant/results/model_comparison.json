@@ -1,0 +1,83 @@
+{
+  "models": [
+    {
+      "model": "TF-IDF + LR",
+      "status": "measured",
+      "precision": 0.5166846071044133,
+      "recall": 0.6751054852320675,
+      "f1": 0.5853658536585366,
+      "accuracy": 0.6924468566259611,
+      "latency_ms_median": 1.5881379999882483,
+      "latency_ms_mean": 2.8021418666488294,
+      "samples": 30,
+      "artifact_bytes": 1246638
+    },
+    {
+      "model": "CodeBERT + LoRA",
+      "status": "untrained",
+      "precision": null,
+      "recall": null,
+      "f1": null,
+      "accuracy": null,
+      "latency_ms_median": null
+    }
+  ],
+  "protocol": "Warm CPU, batch=1, includes tokenization/vectorization, excludes loading; validation rows only",
+  "machine": "Linux-6.17.0-23-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "split_manifest": {
+    "seed": 42,
+    "method": "source-group class-composition stratification",
+    "ratios": [
+      0.7,
+      0.15,
+      0.15
+    ],
+    "dataset_sha256": "0734fa6e3a65830d2981878afec8fbbcfcc8cddec552dab633727efdf7925120",
+    "source_id_overlap": {
+      "train_validation": 0,
+      "train_test": 0,
+      "validation_test": 0
+    },
+    "files": {
+      "train": "4712ca023998a07a33a9f794312bc9b8b3311f8b91819f2cca0812d7386a54bc",
+      "validation": "56078ed134632c9fdbf877e7aebdbaa391ae2cce2dce36beed418f004bdbde7f",
+      "test": "fceb0621824b1c558afa5bdd2df121879186f575b681fff53853c200a8ea4773"
+    },
+    "statistics": {
+      "train": {
+        "samples": 10320,
+        "source_ids": 7000,
+        "clean": 7000,
+        "buggy": 3320,
+        "mutation_types": {
+          "comparison_operator": 1354,
+          "arithmetic_operator": 1284,
+          "boolean_operator": 682
+        }
+      },
+      "validation": {
+        "samples": 2212,
+        "source_ids": 1500,
+        "clean": 1500,
+        "buggy": 712,
+        "mutation_types": {
+          "comparison_operator": 299,
+          "arithmetic_operator": 277,
+          "boolean_operator": 136
+        }
+      },
+      "test": {
+        "samples": 2211,
+        "source_ids": 1500,
+        "clean": 1500,
+        "buggy": 711,
+        "mutation_types": {
+          "comparison_operator": 303,
+          "arithmetic_operator": 277,
+          "boolean_operator": 131
+        }
+      }
+    }
+  }
+}
