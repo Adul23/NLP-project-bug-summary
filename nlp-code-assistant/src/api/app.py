@@ -90,6 +90,12 @@ class FeedbackRequest(BaseModel):
         return value
 
 
+class RetrainRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    epochs: int = Field(default=3, ge=1, le=10)
+    mistakes_only: bool = False
+
+
 def create_app(model_root=None, feedback_dir=None):
     root = Path(model_root or os.environ.get("BUG_MODEL_ROOT", ROOT / "models"))
     fb_root = Path(
@@ -97,6 +103,11 @@ def create_app(model_root=None, feedback_dir=None):
     )
     uncertain_file = fb_root / "uncertain_cases.jsonl"
     user_feedback_file = fb_root / "user_feedback.jsonl"
+
+    # Гарантируем, что папка и оба файла существуют сразу при старте
+    fb_root.mkdir(parents=True, exist_ok=True)
+    uncertain_file.touch(exist_ok=True)
+    user_feedback_file.touch(exist_ok=True)
 
     directories = {
         "tfidf": root / "tfidf_v2",
@@ -114,6 +125,12 @@ def create_app(model_root=None, feedback_dir=None):
             path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    def read_jsonl(path: Path) -> list[dict]:
+        if not path.exists():
+            return []
+        with fb_lock, open(path, "r", encoding="utf-8") as f:
+            return [json.loads(line) for line in f if line.strip()]
 
     def log_if_uncertain(code: str, model: str, prediction: dict):
         prob = prediction.get("bug_probability")
@@ -229,6 +246,17 @@ def create_app(model_root=None, feedback_dir=None):
             result.update(load("summarizer").generate(request.code))
         return result
 
+    @api.get("/feedback")
+    def get_feedback_stats():
+        user_rows = read_jsonl(user_feedback_file)
+        uncertain_rows = read_jsonl(uncertain_file)
+        return {
+            "user_feedback_count": len(user_rows),
+            "mistakes_count": sum(1 for r in user_rows if r.get("is_mistake", False)),
+            "uncertain_cases_count": len(uncertain_rows),
+            "recent_feedback": user_rows[-5:],
+        }
+
     @api.post("/feedback")
     def feedback(request: FeedbackRequest):
         pred_norm = request.predicted_label.upper()
@@ -246,6 +274,34 @@ def create_app(model_root=None, feedback_dir=None):
         }
         append_jsonl(user_feedback_file, record)
         return {"status": "saved", "is_mistake": is_mistake}
+
+    @api.post("/feedback/retrain")
+    def trigger_retrain(request: RetrainRequest):
+        from src.bug_detection.retrain_from_feedback import retrain_lora
+
+        output_dir = root / "codebert_lora_v2"
+        try:
+            retrain_lora(
+                feedback_file=user_feedback_file,
+                base_lora_dir=directories["codebert"],
+                output_dir=output_dir,
+                epochs=request.epochs,
+                mistakes_only=request.mistakes_only,
+            )
+            # Подключаем дообученную модель сразу в рабочий сервер
+            with lock:
+                directories["codebert"] = output_dir
+                cache.pop("codebert", None)
+                failures.pop("codebert", None)
+        except (FileNotFoundError, ValueError) as exc:
+            raise HTTPException(422, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(500, f"Retraining failed: {exc}") from exc
+
+        return {
+            "status": "retrained_and_hot_swapped",
+            "active_model_dir": str(output_dir),
+        }
 
     return api
 
