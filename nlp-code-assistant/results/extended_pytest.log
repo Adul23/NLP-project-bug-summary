@@ -1,0 +1,90 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0 -- /home/ad/nlp/nlp-code-assistant/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/ad/nlp/nlp-code-assistant
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1, platformdirs-4.12.1
+collecting ... collected 63 items
+
+tests/test_extended_pipeline.py::test_stratification_and_manifest PASSED [  1%]
+tests/test_extended_pipeline.py::test_verified_change[==-!=-comparison_operator] PASSED [  3%]
+tests/test_extended_pipeline.py::test_verified_change[+---arithmetic_operator] PASSED [  4%]
+tests/test_extended_pipeline.py::test_verified_change[and-or-boolean_operator] PASSED [  6%]
+tests/test_extended_pipeline.py::test_unverified_changes_rejected[def f(a,b): return a + b] PASSED [  7%]
+tests/test_extended_pipeline.py::test_unverified_changes_rejected[def f(a,b): return a - 2] PASSED [  9%]
+tests/test_extended_pipeline.py::test_unverified_changes_rejected[bad syntax] PASSED [ 11%]
+tests/test_extended_pipeline.py::test_unverified_changes_rejected[def f(a,b): return "-"] PASSED [ 12%]
+tests/test_extended_pipeline.py::test_pair_supervision PASSED            [ 14%]
+tests/test_extended_pipeline.py::test_api_prediction_and_evidence PASSED [ 15%]
+tests/test_extended_pipeline.py::test_api_limits_errors PASSED           [ 17%]
+tests/test_extended_pipeline.py::test_imports_do_not_train_or_import_transformers PASSED [ 19%]
+tests/test_extended_pipeline.py::test_prepare_refuses_overwriting_data PASSED [ 20%]
+tests/test_extended_pipeline.py::test_api_never_executes_submitted_code PASSED [ 22%]
+tests/test_extended_pipeline.py::test_streamed_body_limit PASSED         [ 23%]
+tests/test_lora_local.py::test_gradients_save_reload[False] PASSED       [ 25%]
+tests/test_lora_local.py::test_gradients_save_reload[True] PASSED        [ 26%]
+tests/test_lora_local.py::test_training_entrypoints PASSED               [ 28%]
+tests/test_mutations.py::MutationTests::test_no_changes_to_function_decorators_defaults_or_annotations PASSED [ 30%]
+tests/test_mutations.py::MutationTests::test_no_supported_operator PASSED [ 31%]
+tests/test_mutations.py::MutationTests::test_non_newline_separators_do_not_shift_operator_positions 
+tests/test_mutations.py::MutationTests::test_non_newline_separators_do_not_shift_operator_positions PASSED [ 33%]
+tests/test_mutations.py::MutationTests::test_only_one_operator_changes_in_chained_comparison PASSED [ 34%]
+tests/test_mutations.py::MutationTests::test_parentheses_and_operator_precedence_preserved PASSED [ 36%]
+tests/test_mutations.py::MutationTests::test_preserves_strings_comments_formatting_and_unicode PASSED [ 38%]
+tests/test_mutations.py::MutationTests::test_seed_reproducibility PASSED [ 39%]
+tests/test_mutations.py::MutationTests::test_supported_operators 
+tests/test_mutations.py::MutationTests::test_supported_operators PASSED  [ 41%]
+tests/test_pipeline.py::PipelineTests::test_all_cli_stages_and_leading_zero_roundtrip PASSED [ 42%]
+tests/test_pipeline.py::PipelineTests::test_insufficient_input_does_not_publish_output PASSED [ 44%]
+tests/test_pipeline.py::PipelineTests::test_mutation_collision_with_any_clean_function_is_skipped PASSED [ 46%]
+tests/test_pipeline.py::PipelineTests::test_pair_linkage_category_counts_and_examples PASSED [ 47%]
+tests/test_pipeline.py::PipelineTests::test_parquet_reader_stops_early_and_repeats_seed PASSED [ 49%]
+tests/test_pipeline.py::PipelineTests::test_quality_checks_reject_corrupt_rows 
+tests/test_pipeline.py::PipelineTests::test_quality_checks_reject_corrupt_rows PASSED [ 50%]
+tests/test_pipeline.py::PipelineTests::test_stream_exhaustion_and_schema_errors_fail 
+tests/test_pipeline.py::PipelineTests::test_stream_exhaustion_and_schema_errors_fail PASSED [ 52%]
+tests/test_pipeline.py::PipelineTests::test_stream_stops_at_valid_unique_target PASSED [ 53%]
+tests/test_preprocess.py::PreprocessTests::test_accepts_async_and_decorated_functions PASSED [ 55%]
+tests/test_preprocess.py::PreprocessTests::test_consecutive_docstrings_do_not_expose_a_new_docstring PASSED [ 57%]
+tests/test_preprocess.py::PreprocessTests::test_deduplication_stats_and_zero_padded_ids PASSED [ 58%]
+tests/test_preprocess.py::PreprocessTests::test_docstring_only_and_inline_docstring_remain_valid PASSED [ 60%]
+tests/test_preprocess.py::PreprocessTests::test_normalizes_without_reformatting PASSED [ 61%]
+tests/test_preprocess.py::PreprocessTests::test_rejects_empty_invalid_and_nonfunction_fragments 
+tests/test_preprocess.py::PreprocessTests::test_rejects_empty_invalid_and_nonfunction_fragments PASSED [ 63%]
+tests/test_preprocess.py::PreprocessTests::test_removes_docstrings_but_preserves_literals_and_unicode PASSED [ 65%]
+tests/test_split_dataset.py::test_source_groups_are_disjoint_complete_and_repeatable PASSED [ 66%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[label-2] PASSED [ 68%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[label-None] PASSED [ 69%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[code-] PASSED [ 71%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[code-None] PASSED [ 73%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[source_id-] PASSED [ 74%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[source_id-None] PASSED [ 76%]
+tests/test_split_dataset.py::test_invalid_data_is_rejected[mutation_type-None] PASSED [ 77%]
+tests/test_split_dataset.py::test_leaking_splits_are_rejected PASSED     [ 79%]
+tests/test_split_dataset.py::test_csv_preserves_leading_zero_source_ids PASSED [ 80%]
+tests/test_tfidf_pipeline.py::test_training_excludes_validation_text_and_saves_predictable_models PASSED [ 82%]
+tests/test_tfidf_pipeline.py::test_selection_uses_highest_validation_f1_and_first_on_ties[candidate_predictions0-winner0] PASSED [ 84%]
+tests/test_tfidf_pipeline.py::test_selection_uses_highest_validation_f1_and_first_on_ties[candidate_predictions1-winner1] PASSED [ 85%]
+tests/test_tfidf_pipeline.py::test_full_run_fits_only_train_and_evaluates_test_once PASSED [ 87%]
+tests/test_tfidf_pipeline.py::test_metrics_and_mutation_recall_use_buggy_samples_only PASSED [ 88%]
+tests/test_tfidf_pipeline.py::test_examples_limit_and_no_predicted_bugs PASSED [ 90%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[None] PASSED [ 92%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[123] PASSED [ 93%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[] PASSED [ 95%]
+tests/test_tfidf_pipeline.py::test_predict_rejects_invalid_code_before_loading[   ] PASSED [ 96%]
+tests/test_tfidf_pipeline.py::test_missing_models_explain_training_command PASSED [ 98%]
+tests/test_tfidf_pipeline.py::test_cli_produces_splits_reports_and_models PASSED [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/testclient.py:37
+  /home/ad/nlp/nlp-code-assistant/.venv/lib/python3.12/site-packages/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_lora_local.py::test_gradients_save_reload[False]
+tests/test_lora_local.py::test_gradients_save_reload[True]
+  /home/ad/nlp/nlp-code-assistant/.venv/lib/python3.12/site-packages/peft/utils/save_and_load.py:286: UserWarning: Could not find a config file in  - will assume that the vocabulary was not modified.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============= 63 passed, 3 warnings, 31 subtests passed in 20.24s ==============

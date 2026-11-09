@@ -9,9 +9,10 @@ models/**
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !models/.gitkeep
-
-.venv-baseline/
-
-.DS_Store
+.env
+.env.*
+!.env.example
 .ipynb_checkpoints/
-checkpoints/
+runs/
+*.safetensors
+*.ckpt
