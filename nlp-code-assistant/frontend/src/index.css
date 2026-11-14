@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 250 250 250;
+  --surface: 255 255 255;
+  --subtle: 244 244 245;
+  --line: 228 228 231;
+  --fg: 24 24 27;
+  --muted: 113 113 122;
+  --accent: 79 70 229;
+  --accent-fg: 255 255 255;
+  --ok: 22 163 74;
+  --bad: 220 38 38;
+  --warn: 217 119 6;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: 12 12 14;
+    --surface: 24 24 27;
+    --subtle: 39 39 42;
+    --line: 52 52 58;
+    --fg: 244 244 245;
+    --muted: 161 161 170;
+    --accent: 129 140 248;
+    --accent-fg: 17 17 20;
+    --ok: 74 222 128;
+    --bad: 248 113 113;
+    --warn: 251 191 36;
+    color-scheme: dark;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg font-sans text-fg antialiased;
+  font-size: 14px;
+}
+
+/* CodeMirror: match app tokens */
+.cm-theme-app .cm-editor {
+  @apply rounded border border-line bg-surface;
+  font-size: 13px;
+}
+.cm-theme-app .cm-editor.cm-focused {
+  outline: 2px solid rgb(var(--accent) / 0.35);
+  outline-offset: -1px;
+}
+.cm-theme-app .cm-scroller {
+  @apply font-mono;
+}
+.cm-theme-app .cm-gutters {
+  @apply border-r border-line bg-subtle text-muted;
+}
+.cm-theme-app .cm-bug-line {
+  background-color: rgb(var(--bad) / 0.14);
+}

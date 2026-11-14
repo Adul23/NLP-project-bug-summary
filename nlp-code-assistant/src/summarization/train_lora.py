@@ -2,13 +2,19 @@
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 from src.bug_detection.experiment_data import sha256
 from src.bug_detection.lora_common import (
+    PRECISIONS,
     add_summarizer_lora,
     hardware_options,
+    loader_options,
+    pad_multiple,
     require_empty,
+    runtime_report,
+    tokenize_once,
     write_json,
 )
 from src.bug_detection.split_dataset import ROOT
@@ -59,7 +65,18 @@ def train(args):
         set_seed,
     )
 
-    options = hardware_options(args.device)
+    # Callers that build a Namespace by hand (tests, notebooks) may omit newer options.
+    for name, value in {"eval_batch_size": 32, "precision": "auto"}.items():
+        if not hasattr(args, name):
+            setattr(args, name, value)
+    started = time.perf_counter()
+    # T5 can overflow in fp16, so "auto" only picks bf16 here; fp16 must be requested explicitly.
+    options = hardware_options(args.device, args.precision, allow_fp16_auto=False)
+    cuda = not options["use_cpu"]
+    if cuda:
+        torch.cuda.reset_peak_memory_stats()
+        if args.batch_size == 1:
+            print("Hint: --batch-size 1 on CUDA is slow; try --batch-size 16 --accumulation 1.")
     set_seed(42)
     parts = load_supervision(args.data_dir)
     output = require_empty(args.output)
@@ -70,31 +87,27 @@ def train(args):
     model, targets = add_summarizer_lora(base)
     base.config.use_cache = False
     encoded = []
-    for rows in parts:
-        data = Dataset.from_list(rows)
-
-        def tokenize(batch):
-            inputs = tokenizer(
-                [PROMPT + code for code in batch["buggy_code"]],
-                truncation=True,
-                max_length=args.max_length,
-                return_token_type_ids=False,
-            )
-            inputs["labels"] = tokenizer(
-                text_target=batch["explanation"], truncation=True, max_length=128
-            )["input_ids"]
-            return inputs
-
-        encoded.append(
-            data.map(tokenize, batched=True, remove_columns=data.column_names)
+    truncation = {}
+    for name, rows in zip(("train", "validation", "test"), parts):
+        # One tokenizer pass for the inputs: truncation statistics and truncated ids together.
+        features, truncation[name] = tokenize_once(
+            tokenizer, [PROMPT + row["buggy_code"] for row in rows], args.max_length
         )
+        features["labels"] = tokenizer(
+            text_target=[row["explanation"] for row in rows],
+            truncation=True,
+            max_length=128,
+        )["input_ids"]
+        encoded.append(Dataset.from_dict(features))
     config = Seq2SeqTrainingArguments(
         output_dir=str(output / "checkpoints"),
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
-        per_device_eval_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.eval_batch_size,
         gradient_accumulation_steps=args.accumulation,
         learning_rate=2e-4,
+        lr_scheduler_type="linear",
+        warmup_ratio=0.06,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
@@ -104,9 +117,10 @@ def train(args):
         seed=42,
         data_seed=42,
         report_to="none",
-        dataloader_num_workers=0,
+        group_by_length=True,  # batches of similar length waste far less padding
         gradient_checkpointing=args.gradient_checkpointing,
         gradient_checkpointing_kwargs={"use_reentrant": False},
+        **loader_options(options),
         **options,
     )
     trainer = Seq2SeqTrainer(
@@ -115,14 +129,17 @@ def train(args):
         train_dataset=encoded[0],
         eval_dataset=encoded[1],
         processing_class=tokenizer,
-        data_collator=DataCollatorForSeq2Seq(tokenizer, model=model),
+        data_collator=DataCollatorForSeq2Seq(
+            tokenizer, model=model, pad_to_multiple_of=pad_multiple(options)
+        ),
         callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],
     )
     try:
-        trainer.train()
+        outcome = trainer.train()
     except torch.OutOfMemoryError as exc:
         raise RuntimeError(
-            "Reduce --batch-size, enable --gradient-checkpointing, or use --device cpu"
+            "Out of memory: lower --batch-size (raise --accumulation to compensate), "
+            "enable --gradient-checkpointing, or use --device cpu"
         ) from exc
     trainer.remove_callback(EarlyStoppingCallback)
     test_metrics = trainer.evaluate(encoded[2], metric_key_prefix="test")
@@ -144,6 +161,20 @@ def train(args):
                 (args.data_dir / "manifest.json").read_text()
             ),
             "best_checkpoint": trainer.state.best_model_checkpoint,
+            "truncation_fraction": truncation,
+            "hyperparameters": {
+                "batch_size": args.batch_size,
+                "eval_batch_size": args.eval_batch_size,
+                "accumulation": args.accumulation,
+                "learning_rate": 2e-4,
+                "lr_scheduler": "linear",
+                "warmup_ratio": 0.06,
+                "group_by_length": True,
+                "gradient_checkpointing": bool(args.gradient_checkpointing),
+            },
+            "runtime": runtime_report(
+                outcome.metrics, started, options, len(encoded[0])
+            ),
         },
     )
     write_json(
@@ -156,28 +187,31 @@ def train(args):
     )
     # A fixed review sample, with references and blank human ratings, avoids inventing quality scores.
     model.eval()
-    review = []
-    for row in parts[2][:20]:
-        inputs = tokenizer(
-            PROMPT + row["buggy_code"],
-            return_tensors="pt",
-            truncation=True,
-            max_length=args.max_length,
-            return_token_type_ids=False,
-        ).to(model.device)
-        with torch.inference_mode():
-            ids = model.generate(**inputs, max_new_tokens=128, do_sample=False)
-        review.append(
-            {
-                "source_id": row["source_id"],
-                "buggy_code": row["buggy_code"],
-                "reference": row["explanation"],
-                "generated": tokenizer.decode(ids[0], skip_special_tokens=True),
-                "correctness_0_to_2": None,
-                "specificity_0_to_2": None,
-                "unsupported_claims": None,
-            }
-        )
+    sample = parts[2][:20]
+    # One batched generate call for the whole review sample instead of 20 single calls.
+    inputs = tokenizer(
+        [PROMPT + row["buggy_code"] for row in sample],
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=args.max_length,
+        return_token_type_ids=False,
+    ).to(model.device)
+    with torch.inference_mode():
+        ids = model.generate(**inputs, max_new_tokens=128, do_sample=False)
+    generated = tokenizer.batch_decode(ids, skip_special_tokens=True)
+    review = [
+        {
+            "source_id": row["source_id"],
+            "buggy_code": row["buggy_code"],
+            "reference": row["explanation"],
+            "generated": text,
+            "correctness_0_to_2": None,
+            "specificity_0_to_2": None,
+            "unsupported_claims": None,
+        }
+        for row, text in zip(sample, generated)
+    ]
     write_json(output / "human_review.json", review)
 
 
@@ -190,14 +224,21 @@ def main():
     p.add_argument("--base-model", default="Salesforce/codet5-small")
     p.add_argument("--revision", default="main")
     p.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
+    p.add_argument(
+        "--precision",
+        choices=PRECISIONS,
+        default="auto",
+        help="auto: bf16 if the GPU supports it natively, else fp32 (T5 can overflow in fp16)",
+    )
     p.add_argument("--epochs", type=int, default=5)
-    p.add_argument("--batch-size", type=int, default=1)
-    p.add_argument("--accumulation", type=int, default=8)
+    p.add_argument("--batch-size", type=int, default=16)
+    p.add_argument("--eval-batch-size", type=int, default=32)
+    p.add_argument("--accumulation", type=int, default=1)
     p.add_argument("--max-length", type=int, default=512, metavar="8..512")
     p.add_argument("--gradient-checkpointing", action="store_true")
     args = p.parse_args()
-    if min(args.epochs, args.batch_size, args.accumulation) < 1:
-        p.error("epochs, batch size and accumulation must be positive")
+    if min(args.epochs, args.batch_size, args.eval_batch_size, args.accumulation) < 1:
+        p.error("epochs, batch sizes and accumulation must be positive")
     if not 8 <= args.max_length <= 512:
         p.error("max length must be between 8 and 512")
     train(args)

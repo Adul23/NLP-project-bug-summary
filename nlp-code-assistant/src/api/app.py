@@ -3,12 +3,14 @@
 import json
 import os
 import threading
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from src.bug_detection import retrain_from_feedback
 from src.bug_detection.split_dataset import ROOT
 from src.inference.models import LoraPredictor, TfidfPredictor
 from src.summarization.prepare import verified_change
@@ -111,12 +113,14 @@ def create_app(model_root=None, feedback_dir=None):
 
     directories = {
         "tfidf": root / "tfidf_v2",
-        "codebert": root / "codebert_lora",
+        # models/codebert_lora_active.json (written by accepted retrains) selects the adapter.
+        "codebert": retrain_from_feedback.read_active_dir(root),
         "summarizer": root / "codet5_lora",
     }
     cache, failures = {}, {}
     lock = threading.Lock()
     fb_lock = threading.Lock()
+    jobs, jobs_lock = {}, threading.Lock()  # retrain jobs by id; one may be active
     api = FastAPI(title="Python Bug Detection and Explanation")
     api.add_middleware(BodyLimit)
 
@@ -275,33 +279,107 @@ def create_app(model_root=None, feedback_dir=None):
         append_jsonl(user_feedback_file, record)
         return {"status": "saved", "is_mistake": is_mistake}
 
-    @api.post("/feedback/retrain")
-    def trigger_retrain(request: RetrainRequest):
-        from src.bug_detection.retrain_from_feedback import retrain_lora
+    def now():
+        return datetime.now(UTC).isoformat()
 
-        output_dir = root / "codebert_lora_v2"
+    def update_job(job_id, **changes):
+        with jobs_lock:
+            jobs[job_id].update(changes)
+
+    def run_retrain(job_id, request, base_dir):
+        update_job(job_id, status="running", started_at=now())
+
+        def progress(**state):
+            update_job(job_id, progress=state)
+
         try:
-            retrain_lora(
+            samples = os.environ.get("BUG_RETRAIN_GATE_SAMPLES")
+            # Looked up at call time so the training function can be replaced (tests).
+            result = retrain_from_feedback.retrain_lora(
                 feedback_file=user_feedback_file,
-                base_lora_dir=directories["codebert"],
-                output_dir=output_dir,
+                base_lora_dir=base_dir,
+                model_root=root,
                 epochs=request.epochs,
                 mistakes_only=request.mistakes_only,
+                gate_samples=int(samples) if samples else None,
+                progress=progress,
             )
+        except (FileNotFoundError, ValueError) as exc:
+            update_job(job_id, status="failed", error=str(exc), finished_at=now())
+            return
+        except Exception as exc:  # noqa: BLE001 - the job must always reach a final state
+            update_job(
+                job_id,
+                status="failed",
+                error=f"Retraining failed: {exc}",
+                finished_at=now(),
+            )
+            return
+        accepted = result["status"] == "accepted"
+        if accepted:
             # Подключаем дообученную модель сразу в рабочий сервер
             with lock:
-                directories["codebert"] = output_dir
+                directories["codebert"] = Path(result["output_dir"])
                 cache.pop("codebert", None)
                 failures.pop("codebert", None)
+        update_job(
+            job_id,
+            status="done" if accepted else "rejected",
+            result=result["status"],
+            metrics={"old": result["old_metrics"], "new": result["new_metrics"]},
+            output_dir=result["output_dir"],
+            active_model_dir=str(directories["codebert"]),
+            finished_at=now(),
+        )
+
+    @api.post("/feedback/retrain", status_code=202)
+    def trigger_retrain(request: RetrainRequest):
+        base_dir = directories["codebert"]
+        # Cheap checks up front, so obvious problems are a 422 instead of a failed job.
+        try:
+            retrain_from_feedback.read_base_config(base_dir)
+            if not retrain_from_feedback.load_feedback_records(
+                user_feedback_file, mistakes_only=request.mistakes_only
+            ):
+                raise ValueError("No valid feedback rows to retrain on")
         except (FileNotFoundError, ValueError) as exc:
             raise HTTPException(422, str(exc)) from exc
-        except Exception as exc:
-            raise HTTPException(500, f"Retraining failed: {exc}") from exc
+        with jobs_lock:
+            if any(job["status"] in ("queued", "running") for job in jobs.values()):
+                raise HTTPException(409, "A retraining job is already running")
+            job_id = uuid.uuid4().hex[:12]
+            jobs[job_id] = {
+                "job_id": job_id,
+                "status": "queued",
+                "epochs": request.epochs,
+                "mistakes_only": request.mistakes_only,
+                "progress": {"phase": "queued"},
+                "result": None,
+                "metrics": None,
+                "output_dir": None,
+                "active_model_dir": str(base_dir),
+                "error": None,
+                "created_at": now(),
+                "started_at": None,
+                "finished_at": None,
+            }
+            snapshot = dict(jobs[job_id])
+        threading.Thread(
+            target=run_retrain, args=(job_id, request, base_dir), daemon=True
+        ).start()
+        return snapshot
 
-        return {
-            "status": "retrained_and_hot_swapped",
-            "active_model_dir": str(output_dir),
-        }
+    @api.get("/feedback/retrain")
+    def latest_retrain_job():
+        with jobs_lock:
+            return {"job": dict(list(jobs.values())[-1]) if jobs else None}
+
+    @api.get("/feedback/retrain/{job_id}")
+    def retrain_job(job_id: str):
+        with jobs_lock:
+            if job_id not in jobs:
+                raise HTTPException(404, "Unknown retraining job")
+            return dict(jobs[job_id])
 
     return api
 

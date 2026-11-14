@@ -4,13 +4,13 @@ This project reuses the CodeSearchNet preprocessing and operator-mutation pipeli
 and adds two classification paths, evidence-based explanations, optional LoRA
 summarization, and a small FastAPI backend. Source code is never executed.
 
-**Current status (2026-10-11):** TF-IDF trained on the complete local dataset;
+**Current status (2026-11-14):** TF-IDF trained on the complete local dataset;
 verified synthetic explanation data prepared; API tested with real TF-IDF artifacts.
-CodeBERT and CodeT5 training pipelines are implemented and tested with tiny random
-local transformer fixtures. **The pretrained CodeBERT classifier and CodeT5
-summarizer have not been fine-tuned here.** They have no measured quality or
-latency results. This environment is CPU-only; full pretrained training is deferred
-because of the runtime/resource cost, not because the fixture scores represent it.
+**The CodeBERT + LoRA classifier is fine-tuned** (3 epochs, 3,870 steps, about 66 minutes
+on a CUDA GPU) and measured on the shared split: test BUGGY F1 **0.7538**, accuracy
+**0.8449**. **The CodeT5 summarizer has not been fine-tuned yet.** Its pipeline is
+implemented and tested only with tiny random local transformer fixtures, so it has no
+measured quality or latency results.
 
 ## Setup and CPU baseline
 
@@ -84,6 +84,9 @@ CodeSearchNet Python functions
               |
               v
            FastAPI
+              |
+              v
+     React web interface
 ```
 
 | Component | Entry point |
@@ -97,6 +100,7 @@ CodeSearchNet Python functions
 | Local inference and CLI | `src/inference/{models,cli}.py` |
 | Recorded metrics and warm latency comparison | `src/evaluation/compare_models.py` |
 | HTTP backend | `src/api/app.py` |
+| Web interface (React + Vite) | `frontend/` |
 
 ## Optional transformer installation and training
 
@@ -207,6 +211,46 @@ body limit, including streamed bodies. Blank/non-string inputs and unknown model
 return 422; missing model artifacts/dependencies return 503; oversized bodies return
 413. No `eval`, `exec`, subprocess execution of source, or precise repair guessing.
 
+The API also collects feedback for retraining:
+
+- `GET /feedback`: counts of user feedback, mistakes and uncertain cases, plus the five most recent feedback rows.
+- `POST /feedback`: `{"code", "model", "predicted_label", "actual_label"}` with optional
+  `user_explanation` and `fixed_code`. Saved to `data/feedback/user_feedback.jsonl`.
+- `POST /feedback/retrain`: `{"epochs": 1-10, "mistakes_only": bool}`. Fine-tunes the CodeBERT
+  adapter on feedback into `models/codebert_lora_v2` and hot-swaps it. Synchronous; can take minutes.
+
+Predictions with bug probability from 0.40 to 0.60 are logged to
+`data/feedback/uncertain_cases.jsonl`. `BUG_FEEDBACK_DIR` changes the feedback directory.
+
+## Web interface
+
+`frontend/` is a single-page React 18 + Vite + TypeScript + Tailwind app on top of the API.
+Run the backend from `nlp-code-assistant/` (the folder that contains `src/`), then the
+frontend in a second terminal:
+
+```bash
+uvicorn src.api.app:app --reload --port 8000
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+The Vite dev server proxies `/api/*` to `http://localhost:8000/*`, so no CORS setup is needed.
+Requires Node 18.18+.
+
+- **Analyze:** Python editor (CodeMirror) with an optional original-code editor for verified
+  explanations; model switch TF-IDF / CodeBERT and explanation switch rule-based / LoRA. The
+  result shows the BUGGY/CLEAN verdict, client-measured latency, bug probability with the
+  40-60% uncertain zone, bug type, verified vs. generated explanation, and highlights the line
+  the explanation mentions. "Was this right?" sends feedback.
+- **Feedback:** feedback, mistake and uncertain-case counts, recent feedback, and a CodeBERT
+  retraining panel.
+- **Models:** precision, recall, F1, accuracy, median latency and artifact size for both
+  classifiers, read from `results/model_comparison.json` at build time. Run
+  `npm run sync-metrics` after re-running `src.evaluation.compare_models`.
+
+Model status pills in the top bar poll `/health` every 15 s; models that are not trained or
+failed to load are disabled with a tooltip. Checks: `npm run typecheck`, `npm run lint`,
+`npm test` (Vitest), `npm run build`. See `frontend/README.md` for details.
+
 ## Current measured experiment
 
 This is a **new protocol** (stratified groups and ordinary TF). It is not directly
@@ -214,17 +258,27 @@ comparable to the historical sublinear-TF run below or the student notebook.
 
 | Model | BUGGY precision | BUGGY recall | BUGGY F1 | Accuracy | Inference latency |
 |---|---:|---:|---:|---:|---|
-| TF-IDF + LR | 0.5167 | 0.6751 | 0.5854 | 0.6924 | 1.59 ms median |
-| CodeBERT + LoRA | Not trained | Not trained | Not trained | Not trained | Not measured |
+| TF-IDF + LR | 0.5167 | 0.6751 | 0.5854 | 0.6924 | 2.67 ms median |
+| CodeBERT + LoRA | 0.7698 | 0.7384 | 0.7538 | 0.8449 | 569 ms median |
 
 Latency: 30 validation functions, warm CPU, batch 1, includes vectorization and
-prediction, excludes loading. Adapter-only size is not total model size; when
-CodeBERT is trained, comparison also records loaded base-plus-adapter parameter bytes.
-The TF-IDF artifacts total 1,246,638 bytes. No transformer speed/size advantage is claimed.
+prediction, excludes loading. Adapter-only size is not total model size: the TF-IDF
+artifacts total 1,246,638 bytes, the CodeBERT LoRA adapter 8,377,131 bytes, and the loaded
+base-plus-adapter parameters 502,136,848 bytes. CodeBERT + LoRA improves BUGGY F1 by
+0.17 and accuracy by 0.15 over TF-IDF, but is about 200x slower per function on CPU and
+much larger.
+
+CodeBERT + LoRA validation: BUGGY F1 **0.7464**, accuracy **0.8391**, eval loss 0.3261.
+Test confusion matrix (rows = actual clean/buggy):
+
+```text
+[[1343, 157],
+ [ 186, 525]]
+```
 
 New split row counts: **10,320 / 2,212 / 2,211**, with **3,320 / 712 / 711** buggy rows.
-All pairwise source-ID overlaps are zero. Validation selected **(2,4)** with F1
-**0.5761**; (3,5) scored 0.5664 and (3,6) scored 0.5650. Final test confusion matrix:
+All pairwise source-ID overlaps are zero. For TF-IDF, validation selected **(2,4)** with F1
+**0.5761**; (3,5) scored 0.5664 and (3,6) scored 0.5650. Final TF-IDF test confusion matrix:
 
 ```text
 [[1051, 449],
@@ -233,8 +287,8 @@ All pairwise source-ID overlaps are zero. Validation selected **(2,4)** with F1
 
 Test mutation recall: comparison 214/303 = 0.7063; arithmetic 194/277 = 0.7004;
 boolean 72/131 = 0.5496. Comparison was easiest and boolean hardest in this run.
-See `results/model_comparison.json` and `results/tfidf_v2_metrics.json` for measured
-values, provenance and per-class reports. Models and generated data remain ignored.
+See `results/model_comparison.json`, `results/tfidf_v2_metrics.json` and
+`models/codebert_lora/metrics.json` for measured values, provenance and per-class reports. Models and generated data remain ignored.
 
 ## Tests and limitations
 
@@ -255,8 +309,8 @@ Transformer tests skip if optional dependencies are absent; with them installed,
 save/reload and generation using tiny random local RoBERTa/T5 fixtures. Those
 fixture scores are not model comparison results. Training never starts at import.
 
-The CPU baseline is functional. Full pretrained CodeBERT/CodeT5 fine-tuning and
-human explanation review remain outstanding. Synthetic operator replacements may
+The TF-IDF baseline and the fine-tuned CodeBERT + LoRA classifier are functional. CodeT5
+summarizer fine-tuning and human explanation review remain outstanding. Synthetic operator replacements may
 not introduce a behavioral error; original code may already contain bugs. Dataset
 sampling, repository overlap, semantic clones and CodeSearchNet pretraining exposure
 limit generalization. See the original preparation documentation below.

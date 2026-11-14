@@ -86,8 +86,10 @@ class LoraPredictor:
         ).to(self.model.device)
         with self.torch.inference_mode():
             probabilities = self.model(**inputs).logits.softmax(-1)[0]
-        label = int(probabilities.argmax())
         p = float(probabilities[1])
+        # A threshold tuned on validation (train_lora --threshold-tune) replaces argmax if stored.
+        threshold = self.config.get("decision_threshold")
+        label = int(probabilities.argmax()) if threshold is None else int(p >= threshold)
         return {
             "label": "BUGGY" if label else "CLEAN",
             "bug_probability": p,
