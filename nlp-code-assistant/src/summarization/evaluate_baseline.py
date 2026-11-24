@@ -1,6 +1,6 @@
 """Score a summarization baseline with corpus BLEU-4 and mean ROUGE-L F1 on one split.
 
-Default split is validation. The test split is for the final evaluation only.
+Default split is validation. The test split needs --confirm-final-test (final evaluation only).
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.summarization import final_test_guard
 from src.summarization import ast_baseline, bm25_retrieval, tfidf_retrieval
 from src.summarization.metrics import corpus_bleu, mean_rouge_l
 
@@ -19,12 +20,16 @@ METHODS = ("ast", "tfidf", "bm25")
 _RETRIEVERS = {"tfidf": tfidf_retrieval.retrieve_summaries, "bm25": bm25_retrieval.retrieve_summaries}
 
 
-def evaluate(dataset: Path, split: str, method: str = "ast") -> dict[str, float | int | str]:
+def evaluate(
+    dataset: Path, split: str, method: str = "ast", limit: int | None = None
+) -> dict[str, float | int | str]:
     if method not in METHODS:
         raise ValueError(f"Unknown method {method!r}; expected one of {METHODS}")
 
     df = pd.read_csv(dataset, dtype={"source_id": str}, keep_default_na=False)
     subset = df[df["split"] == split]
+    if limit:
+        subset = subset.head(limit)
     if subset.empty:
         raise ValueError(f"No rows for split {split!r}")
 
@@ -53,7 +58,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--split", choices=["validation", "test"], default="validation")
     parser.add_argument("--method", choices=METHODS, default="ast")
-    return parser.parse_args()
+    parser.add_argument(
+        "--confirm-final-test", action="store_true",
+        help="required for --split test: the one-time final evaluation",
+    )
+    args = parser.parse_args()
+    final_test_guard.check_args(parser, args.split, args.confirm_final_test)
+    return args
 
 
 def main() -> None:

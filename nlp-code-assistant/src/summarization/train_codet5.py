@@ -107,22 +107,40 @@ def append_log(path, record):
         handle.write(json.dumps(record) + "\n")
 
 
-def resolve_output(args):
+def resolve_output(args, default=DEFAULT_OUTPUT, smoke_prefix="codet5_smoke"):
     if args.output is not None:
         return args.output
     if args.limit:
         # Smoke runs never reuse (or pollute) the real checkpoint folder.
         stamp = time.strftime("%Y%m%d_%H%M%S")
-        return ROOT / f"checkpoints/codet5_smoke_{stamp}"
-    return DEFAULT_OUTPUT
+        return ROOT / f"checkpoints/{smoke_prefix}_{stamp}"
+    return default
 
 
-def train(args):
+def load_full_model(device):
+    return AutoModelForSeq2SeqLM.from_pretrained(BASE_MODEL).to(device)
+
+
+def train(
+    args,
+    *,
+    load_model=load_full_model,
+    default_output=DEFAULT_OUTPUT,
+    smoke_prefix="codet5_smoke",
+    describe=None,
+    extra_settings=None,
+):
+    """Shared training loop.
+
+    The defaults give full fine-tuning. train_codet5_lora.py passes its own
+    `load_model` (base model + LoRA), `describe(model, output)` (extra fields for
+    training_summary.json, called after every epoch) and `extra_settings`.
+    """
     set_seed(args.seed)
     rng = random.Random(args.seed)
     device = pick_device()
 
-    output = resolve_output(args)
+    output = resolve_output(args, default_output, smoke_prefix)
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"{output} is not empty; choose another --output")
     output.mkdir(parents=True, exist_ok=True)
@@ -135,11 +153,12 @@ def train(args):
     print(f"output: {output}")
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
-    model = AutoModelForSeq2SeqLM.from_pretrained(BASE_MODEL).to(device)
+    model = load_model(device)
+    trainable = [p for p in model.parameters() if p.requires_grad]
 
     steps_per_epoch = -(-len(train_data[0]) // args.batch_size)
     total_steps = steps_per_epoch * args.epochs
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+    optimizer = torch.optim.AdamW(trainable, lr=args.lr, weight_decay=0.01)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, int(0.05 * total_steps), total_steps
     )
@@ -159,9 +178,12 @@ def train(args):
         "patience": args.patience,
         "test_split_used": False,
     }
+    settings.update(extra_settings or {})
 
     def write_summary(history, best_epoch, best_loss, started, step_seconds):
         summary = dict(settings)
+        if describe is not None:
+            summary.update(describe(model, output))
         summary.update(
             {
                 "best_epoch": best_epoch,
@@ -193,7 +215,7 @@ def train(args):
             inputs = inputs.to(device)
             loss = model(**inputs, labels=labels.to(device)).loss
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(trainable, 1.0)
             optimizer.step()
             scheduler.step()
             optimizer.zero_grad()
@@ -245,21 +267,17 @@ def train(args):
     print(f"done. best epoch {best_epoch}, val loss {best_loss:.3f}, saved in {output}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+def build_parser(description, default_lr, default_output_help):
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument(
         "--dataset", type=Path, default=ROOT / "data/processed/summarization_dataset.csv"
     )
-    parser.add_argument(
-        "--output", type=Path, default=None,
-        help="checkpoint folder, must be empty (default: checkpoints/codet5_summarizer; "
-        "with --limit: a new checkpoints/codet5_smoke_<time>)",
-    )
+    parser.add_argument("--output", type=Path, default=None, help=default_output_help)
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--max-length", type=int, default=384)
     parser.add_argument("--max-target", type=int, default=48)
-    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--lr", type=float, default=default_lr)
     parser.add_argument("--patience", type=int, default=2)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
@@ -267,6 +285,16 @@ def main():
         help="use only the first N train examples (quick smoke test)",
     )
     parser.add_argument("--log-every", type=int, default=50, help="log every N steps")
+    return parser
+
+
+def main():
+    parser = build_parser(
+        __doc__.splitlines()[0],
+        1e-4,
+        "checkpoint folder, must be empty (default: checkpoints/codet5_summarizer; "
+        "with --limit: a new checkpoints/codet5_smoke_<time>)",
+    )
     train(parser.parse_args())
 
 
