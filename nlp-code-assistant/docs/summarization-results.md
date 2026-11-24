@@ -1,7 +1,7 @@
 # Code summarization results
 
 Task: one-sentence English summary of a Python function (docstring removed from the input).
-Status: **in progress.** Numbers marked **TBD** have not been measured on the final split yet and are filled in from the saved result files. Nothing has been scored on the test split.
+Status: validation results complete; **the test split has not been scored** (one final run is planned at the very end, **TBD**). Every number below comes from the saved result files (`results_summarization/`, `checkpoints/codet5_summarizer*/`).
 
 ## Data
 
@@ -25,22 +25,46 @@ Metrics (`metrics.py`, the same for every method): corpus BLEU-4 and mean ROUGE-
 
 ## Comparison (validation, 1,384 examples)
 
-Produced by `python -m src.summarization.evaluate_model --compare`. Generation: 4 beams, default length penalty.
+Produced by `python -m src.summarization.evaluate_model --compare` (`results_summarization/comparison_validation.*`). Generation: 4 beams, default length penalty, same for both CodeT5 rows. The retrieval baselines index the train split only.
 
 | Method | BLEU-4 | ROUGE-L F1 | Latency median (ms) | Latency mean (ms) | Artifact (MB) | Trainable params |
 |---|---|---|---|---|---|---|
-| AST template | TBD | TBD | — | — | — | — |
-| TF-IDF retrieval | TBD | TBD | — | — | — | — |
-| BM25 retrieval | TBD | TBD | — | — | — | — |
-| CodeT5-small full FT | 0.1390 | 0.3796 | TBD | TBD | TBD | TBD |
-| CodeT5-small LoRA | TBD | TBD | TBD | TBD | TBD | TBD |
+| AST template | 0.0068 | 0.2221 | — | — | — | — |
+| TF-IDF retrieval | 0.1934 | 0.3270 | — | — | — | — |
+| BM25 retrieval | 0.1804 | 0.3236 | — | — | — | — |
+| CodeT5-small full FT | 0.1390 | 0.3796 | 112.2 | 121.8 | 245.12 | 60,492,288 |
+| CodeT5-small LoRA | 0.0780 | 0.3369 | 119.1 | 123.8 | 1.19 | 294,912 |
 
-The full-FT row is the saved result of the earlier run (`metrics_validation_v0.json`; latency, size and parameters were not recorded then). Baseline numbers from before the switch to the shared split are not reused because the split changed.
+Test split: **TBD** (one time, at the very end).
 
-### Full fine-tuning: training and generation settings
+More numbers for the two CodeT5 models:
 
-Best epoch 4 of 6 run (early stopping), validation loss 2.560, 37.7 minutes on Apple M4 (MPS), 0.44 s per step.
-Generation variants were compared on validation only, with the selection rule fixed beforehand (`generation_selection_rule.md`):
+| | Full FT | LoRA (r=8, q,v) |
+|---|---|---|
+| Exact match | 0.0549 | 0.0195 |
+| Mean words, prediction / reference | 6.42 / 9.27 | 5.96 / 9.27 |
+| Brevity penalty | 0.6414 | 0.5735 |
+| Learning rate | 1e-4 | 2e-4 |
+| Best epoch (epochs run) | 4 (6, early stop) | 8 (8, schedule end) |
+| Best validation loss | 2.5604 | 2.8336 |
+| Training time | 37.7 min | 43.0 min |
+| Mean seconds per step | 0.436 | 0.360 |
+| Trainable / total parameters | 60,492,288 (full) | 294,912 of 60,787,200 (0.49%) |
+
+Both runs: Apple M4 (MPS), fp32, 6,524 train / 1,384 validation examples, batch 8, seed 42, `test_split_used: false`. LoRA epochs took 4.2–8.6 minutes each (varying); full FT 6.3 minutes each. Latency: batch 1, 100 examples, warmed up; the LoRA adapter was not merged for this measurement (merged latency: not measured). The LoRA latency medians of two separate runs were 119.1 and 119.8 ms, so differences of a few ms are noise.
+
+### Training curves (validation loss)
+
+| Epoch | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| Full FT | 2.7385 | 2.6171 | 2.5785 | **2.5604** | 2.5973 | 2.6248 | – | – |
+| LoRA | 2.9466 | 2.9008 | 2.8787 | 2.8636 | 2.8486 | 2.8423 | 2.8365 | **2.8336** |
+
+Full FT starts to overfit after epoch 4 (train loss keeps falling, validation loss rises). LoRA's validation loss was still falling slowly at epoch 8 (about 0.003 per epoch), but the learning rate also decays linearly to zero at epoch 8, so part of the flattening is the schedule.
+
+### Generation settings (full FT)
+
+Compared on validation only, with the selection rule fixed beforehand (`generation_selection_rule.md`):
 
 | Variant | Beams | Length penalty | Min new tokens | BLEU-4 | ROUGE-L F1 |
 |---|---|---|---|---|---|
@@ -50,22 +74,58 @@ Generation variants were compared on validation only, with the selection rule fi
 | C | 4 | – | 8 | 0.1473 | 0.3710 |
 | D | 8 | 1.5 | – | 0.1448 | 0.3791 |
 
-`summarize()` uses variant B (4 beams, length penalty 2.0). LoRA training time, best epoch and loss: TBD.
+`summarize()` uses variant B (4 beams, length penalty 2.0). The comparison table above uses v0 for both models, so it does not include this setting.
+
+## Conclusions
+
+- **Full FT is the best CodeT5 model here:** it beats LoRA on every quality number (BLEU-4 0.1390 vs 0.0780, ROUGE-L 0.3796 vs 0.3369, validation loss 2.560 vs 2.834) and has the best ROUGE-L of all five methods.
+- **By BLEU-4 the retrieval baselines are ahead of both models:** TF-IDF 0.1934 and BM25 0.1804 against 0.1390. By ROUGE-L they are behind full FT (0.3270 and 0.3236 against 0.3796) but only slightly below LoRA (0.3369). So the ranking depends on the metric. Plausible reasons (not tested): retrieval returns real docstrings, which match 4-grams exactly when train and validation contain similar or templated functions (the split is by `source_id`, not by repository); the generative models write shorter text (6.4 and 6.0 words against 9.3 in the references), which lowers corpus BLEU through the brevity penalty (0.64 and 0.57). The length of the retrieval outputs was not measured here.
+- **AST template** is far below everything else (BLEU-4 0.0068, ROUGE-L 0.2221), as expected for a fixed sentence.
+- **LoRA trades quality for size:** 1.19 MB against 245.12 MB (about 200 times smaller) and 0.49% of the parameters, at a cost of 0.0610 BLEU-4 and 0.0427 ROUGE-L. Latency is the same within noise (112.2 vs 119.1 ms median, unmerged adapter), and training time was not shorter in this run (43.0 vs 37.7 min, mostly because LoRA ran all 8 epochs).
+- **LoRA may be undertrained:** its best epoch was the last one. One extra run with more capacity and epochs would show whether the gap is real (see the command in the notes at the end of this file). Until then, the LoRA numbers are a lower bound for this method.
+- The differences come from a single run with one seed; no confidence intervals were computed.
 
 ## Error analysis
 
-From `review_examples.py` on the full-FT validation predictions (1,384 examples). ROUGE-L buckets: 0 for 96, (0, 0.3) for 521, [0.3, 0.6) for 502, ≥ 0.6 for 265. Mean prediction length 6.4 words against 9.3 for references, so outputs are on the short side. Frequent first words: get, return, returns, create, add.
+Based on the saved review files. LoRA (`checkpoints/codet5_summarizer_lora/review_validation.md`): mean ROUGE-L 0.3369, median 0.3077; buckets =0: 107, (0, 0.3): 566, [0.3, 0.6): 538, ≥0.6: 173. Groups: good 147, medium 371, bad 150, too_short 471. Full FT, for comparison: good 230, medium 364, bad 152, too_short 403. LoRA's extra losses are mostly in too_short and good.
+Quotes are copied from the review file; code is shortened to the signature.
 
-| Case | Reference | Prediction | Comment |
-|---|---|---|---|
-| good (0.95) | Function enhance Enhance the object with new item or enhanced items | Function enhance Enhance the object with new or enhanced items | Near copy of a templated docstring. |
-| bad (0.00) | Based on example | mptt_before_insert will create a new row from the database. | Reference is uninformative; the model describes a name found in the code. |
-| bad (0.00) | Returns RUNNING, -1 COMPLETE, 0 or EXECUTOR_ERROR, 255 | Get state and exit code. | Reference lists return values; the prediction is a plausible paraphrase. |
-| bad (0.14) | The inside of run's infinite loop. | Run the thread and reset _current_tups. | Reference is context, not behavior. |
-| too short (0.11) | Force use of accuracy score since we don't inherit from ClassifierMixin | Return the score of the model. | Misses the reason that the reference gives. |
-| too short (0.26) | Due to XML content that will not conform with the strict JSON schema validation rules, for elife articles only, rewrite the JSON to make it valid | rewrite json for elife articles | Correct but much shorter than a long reference. |
+**1. Too short and generic (the biggest group: 471 of 1,384 for LoRA).** The model names the action but drops the object and conditions.
 
-Many low scores are acceptable summaries that differ in wording from the original docstring. LoRA error examples: TBD.
+- `def parse_token(self, token, tags=[WORD, POS, CHUNK, PNP, REL, ANCHOR, LEMMA]):`
+  reference: "Returns the arguments for Sentence.append() from a tagged token representation."
+  prediction: "Parse a token."
+- `def update(sql, *args, **kwargs):` (asserts an update statement, executes it, returns `cursor.lastrowid`)
+  reference: "Updates and commits with an insert sql statement, returns the record, but with a small chance of a race condition"
+  prediction: "Update a row in the database."
+
+**2. Summary follows the function name, not the behavior.**
+
+- `def _getSmallestDifference(inputList, targetVal):`
+  reference: "Returns the value in inputList that is closest to targetVal"
+  prediction: "Get the smallest difference between two values."
+- `def _validateParamsFor_validateChoice(choices, blank=False, strip=None, ...):` (a series of checks that raise `PySimpleValidateException`)
+  reference: "Raises PySimpleValidateException if the arguments are invalid."
+  prediction: "Validate a list of choices."
+
+**3. Copying surface text from the code (identifiers and comments) without the purpose.**
+
+- `def runcommand(cosmology='WMAP5'):` contains the comment "# Return the WMAP5 cosmology concentration predicted for"
+  reference: "Example interface commands"
+  prediction: "Return the WMAP5 cosmology concentration predicted for WMAP5."
+- `def setup(app) -> Dict[str, Any]:` (many `app.add_config_value("uqbar_api_...")` calls)
+  reference: "Sets up Sphinx extension."
+  prediction: "Setup uqbar API configuration."
+
+**4. Generic repeated outputs.** Most repeated LoRA predictions: "run the command." (3), "escape a string." (3), "main function." (3). First words: returns (160), get (134), return (87), create (64), add (49).
+
+**5. Low score although the prediction is reasonable (reference noise or different wording).**
+
+- reference: "A fingerprint for each vertex" / prediction: "Get the fingerprints of all the vertices and edges." (ROUGE-L 0.00)
+- reference: "Creates new organization :rtype: Organization" / prediction: "Create a new organization." (0.44; the reference contains a leftover `:rtype:` tag)
+- reference: "Function waitPuppetCatalogToBeApplied Wait for puppet catalog to be applied" / prediction: "Wait for puppet catalog to be applied" (0.88; the reference contains the function name)
+
+Examples from the full-FT review show the same patterns, e.g. "Get state and exit code." for the reference "Returns RUNNING, -1 COMPLETE, 0 or EXECUTOR_ERROR, 255".
 
 ## Limitations
 
@@ -80,3 +140,8 @@ Many low scores are acceptable summaries that differ in wording from the origina
 ## Reproduction
 
 See the "Code summarization" section of the README.
+
+## Notes for the report
+
+- Not added (would need new dependencies): METEOR, BERTScore/CodeBERTScore, a human rating of a sample.
+- Optional extra LoRA run (not done): `python -m src.summarization.train_codet5_lora --lora-r 16 --lora-targets qkvo --lr 5e-4 --epochs 12 --output checkpoints/codet5_summarizer_lora_r16`.
