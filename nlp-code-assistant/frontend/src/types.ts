@@ -1,7 +1,8 @@
 // TypeScript mirrors of the Pydantic models and response shapes in src/api/app.py.
 
 export type ModelName = "tfidf" | "codebert";
-export type ComponentName = ModelName | "summarizer";
+/** summarizer = CodeT5 LoRA explainer; code_summarizer = fully fine-tuned CodeT5 summary model. */
+export type ComponentName = ModelName | "summarizer" | "code_summarizer";
 export type ExplanationMode = "deterministic" | "lora";
 export type Label = "BUGGY" | "CLEAN";
 
@@ -22,6 +23,21 @@ export interface AnalysisRequest {
   model: ModelName;
   original_code?: string;
   explanation: ExplanationMode;
+  /** Also generate a CodeT5 summary. Send only when true. */
+  summarize?: boolean;
+}
+
+export type SummarySource = "codet5_finetuned" | "unavailable";
+
+/** POST /summarize body (extra="forbid"). */
+export interface SummaryRequest {
+  code: string;
+}
+
+export interface SummaryResponse {
+  summary: string;
+  summary_source: "codet5_finetuned";
+  model: "codet5_summarizer";
 }
 
 export type ExplanationSource =
@@ -40,6 +56,9 @@ export interface AnalysisResponse {
   suggested_fix: string | null;
   explanation_source: ExplanationSource;
   verified: boolean;
+  /** Present only when the request had summarize=true; null if the summarizer could not run. */
+  summary?: string | null;
+  summary_source?: SummarySource;
 }
 
 /** FeedbackRequest (extra="forbid"). */

@@ -8,6 +8,8 @@ import {
   type HealthResponse,
   type RetrainJob,
   type RetrainRequest,
+  type SummaryRequest,
+  type SummaryResponse,
 } from "./types";
 
 export const API_BASE = "/api";
@@ -138,6 +140,9 @@ export const api = {
 
   analyze: (body: AnalysisRequest, signal?: AbortSignal) =>
     request<AnalysisResponse>("/analyze", { method: "POST", body, signal }),
+
+  summarize: (body: SummaryRequest, signal?: AbortSignal) =>
+    request<SummaryResponse>("/summarize", { method: "POST", body: { code: body.code }, signal }),
 
   feedbackStats: (signal?: AbortSignal) => request<FeedbackStats>("/feedback", { signal }),
 

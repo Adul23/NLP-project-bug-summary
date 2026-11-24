@@ -6,7 +6,7 @@ import { MAX_CODE_CHARS, type ExplanationMode, type HealthResponse, type ModelNa
 import { CodeEditor } from "./CodeEditor";
 import { ChevronIcon, Spinner } from "./icons";
 import { ResultCard, type AnalysisRun } from "./ResultCard";
-import { Button, Segmented } from "./ui";
+import { Button, Segmented, Toggle } from "./ui";
 
 interface Props {
   health: HealthResponse | null;
@@ -35,12 +35,17 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<AnalysisRun | null>(null);
   const [examplesOpen, setExamplesOpen] = useState(false);
+  // null = follow the default (on whenever the summary model is available).
+  const [summarizeChoice, setSummarizeChoice] = useState<boolean | null>(null);
   const inflight = useRef<AbortController | null>(null);
 
   const status = health?.models;
   const tfidfOk = isUsable(status?.tfidf.status);
   const codebertOk = isUsable(status?.codebert.status);
-  const summarizerOk = isUsable(status?.summarizer.status);
+  const summarizerOk = isUsable(status?.summarizer?.status);
+  // Old backends do not report code_summarizer at all: treat that as unavailable.
+  const codeSummaryOk = status ? isUsable(status.code_summarizer?.status ?? "unavailable") : true;
+  const summarizeOn = codeSummaryOk && (summarizeChoice ?? true);
 
   // Fall back when /health says the current selection can't be used.
   useEffect(() => {
@@ -72,6 +77,7 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
           model,
           explanation,
           original_code: showOriginal && original.trim() ? original : undefined,
+          summarize: summarizeOn || undefined,
         },
         ctrl.signal,
       );
@@ -83,7 +89,7 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
     } finally {
       if (inflight.current === ctrl) setLoading(false);
     }
-  }, [canSubmit, code, model, explanation, showOriginal, original, onAnalyzed]);
+  }, [canSubmit, code, model, explanation, showOriginal, original, summarizeOn, onAnalyzed]);
 
   // Ctrl/Cmd+Enter anywhere on the tab (editors handle it themselves and preventDefault).
   useEffect(() => {
@@ -107,7 +113,7 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
     setExamplesOpen(false);
   }
 
-  const unavailableTip = (name: "tfidf" | "codebert" | "summarizer") =>
+  const unavailableTip = (name: "tfidf" | "codebert" | "code_summarizer") =>
     status ? `${STATUS_TEXT[status[name].status]} — see README to train it` : undefined;
 
   return (
@@ -211,10 +217,28 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
                 value: "lora",
                 label: "LoRA",
                 disabled: !summarizerOk,
-                tooltip: summarizerOk ? undefined : unavailableTip("summarizer"),
+                tooltip: summarizerOk
+                  ? undefined
+                  : "Needs the CodeT5 LoRA explainer (python -m src.summarization.train_lora)",
               },
             ]}
           />
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted">Summary</span>
+            <Toggle
+              label="Summarize function"
+              checked={summarizeOn}
+              disabled={!codeSummaryOk}
+              tooltip={
+                codeSummaryOk
+                  ? undefined
+                  : status?.code_summarizer
+                    ? `${unavailableTip("code_summarizer")}`
+                    : "This backend does not provide summaries"
+              }
+              onChange={setSummarizeChoice}
+            />
+          </div>
           <Button variant="primary" className="ml-auto min-w-[120px]" disabled={!canSubmit} onClick={analyze}>
             {loading && <Spinner />}
             {loading ? "Analyzing" : "Analyze"}

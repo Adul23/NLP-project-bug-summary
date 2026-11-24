@@ -8,14 +8,17 @@ from pathlib import Path
 from src.bug_detection.split_dataset import ROOT
 from src.summarization.prepare import verified_change
 
-from .models import LoraPredictor, TfidfPredictor
+from .models import CodeSummarizer, LoraPredictor, TfidfPredictor
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--file", type=Path, help="Defaults to stdin")
     p.add_argument(
-        "--model", choices=["tfidf", "codebert", "summarizer"], default="tfidf"
+        "--model",
+        choices=["tfidf", "codebert", "summarizer", "code_summarizer"],
+        default="tfidf",
+        help="summarizer = CodeT5 LoRA explainer; code_summarizer = fine-tuned CodeT5 summary",
     )
     p.add_argument("--model-dir", type=Path)
     p.add_argument(
@@ -35,19 +38,18 @@ def main():
             "tfidf": "tfidf_v2",
             "codebert": "codebert_lora",
             "summarizer": "codet5_lora",
+            "code_summarizer": "codet5_summarizer",
         }[a.model]
     )
     try:
-        predictor = (
-            TfidfPredictor(folder)
-            if a.model == "tfidf"
-            else LoraPredictor(folder, summarizer=a.model == "summarizer")
-        )
-        result = (
-            predictor.generate(code)
-            if a.model == "summarizer"
-            else predictor.predict(code)
-        )
+        if a.model == "tfidf":
+            result = TfidfPredictor(folder).predict(code)
+        elif a.model == "code_summarizer":
+            result = CodeSummarizer(folder).summarize(code)
+        elif a.model == "summarizer":
+            result = LoraPredictor(folder, summarizer=True).generate(code)
+        else:
+            result = LoraPredictor(folder).predict(code)
         if a.original_file:
             result["verified_change"] = verified_change(
                 a.original_file.read_text(), code

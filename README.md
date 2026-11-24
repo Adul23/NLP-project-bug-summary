@@ -4,13 +4,14 @@ This project reuses the CodeSearchNet preprocessing and operator-mutation pipeli
 and adds two classification paths, evidence-based explanations, optional LoRA
 summarization, and a small FastAPI backend. Source code is never executed.
 
-**Current status (2026-10-11):** TF-IDF trained on the complete local dataset;
+**Current status (2026-11-16):** TF-IDF trained on the complete local dataset;
 verified synthetic explanation data prepared; API tested with real TF-IDF artifacts.
-CodeBERT and CodeT5 training pipelines are implemented and tested with tiny random
-local transformer fixtures. **The pretrained CodeBERT classifier and CodeT5
-summarizer have not been fine-tuned here.** They have no measured quality or
-latency results. This environment is CPU-only; full pretrained training is deferred
-because of the runtime/resource cost, not because the fixture scores represent it.
+**The CodeBERT + LoRA classifier is fine-tuned** (3 epochs, 3,870 steps, about 66 minutes
+on a CUDA GPU) and measured on the shared split: test BUGGY F1 **0.7538**, accuracy
+**0.8449**. **A fully fine-tuned CodeT5-small summarizer exists** (`models/codet5_summarizer`,
+from `src/summarization/train_codet5.py`) and is served as the one-sentence "Summary" feature;
+its summary quality has not been measured. **The CodeT5 LoRA explainer
+(`models/codet5_lora`) is still untrained**, so `"explanation": "lora"` stays unavailable.
 
 ## Setup and CPU baseline
 
@@ -84,6 +85,9 @@ CodeSearchNet Python functions
               |
               v
            FastAPI
+              |
+              v
+     React web interface
 ```
 
 | Component | Entry point |
@@ -94,9 +98,11 @@ CodeSearchNet Python functions
 | CodeBERT LoRA | `src/bug_detection/train_lora.py` |
 | Mutation verification and synthetic supervision | `src/summarization/prepare.py` |
 | CodeT5 LoRA | `src/summarization/train_lora.py` |
+| CodeT5 full fine-tune (function summaries) | `src/summarization/train_codet5.py` |
 | Local inference and CLI | `src/inference/{models,cli}.py` |
 | Recorded metrics and warm latency comparison | `src/evaluation/compare_models.py` |
 | HTTP backend | `src/api/app.py` |
+| Web interface (React + Vite) | `frontend/` |
 
 ## Optional transformer installation and training
 
@@ -177,13 +183,16 @@ scores or trained pretrained summarizer are claimed in this checkout.
 ```bash
 printf 'def f(a,b): return a != b\n' | python -m src.inference.cli --model tfidf
 python -m src.inference.cli --model codebert --file function.py
-python -m src.inference.cli --model summarizer --file function.py
+python -m src.inference.cli --model summarizer --file function.py       # CodeT5 LoRA explainer
+python -m src.inference.cli --model code_summarizer --file function.py  # fine-tuned CodeT5 summary
 python -m uvicorn src.api.app:app --host 127.0.0.1 --port 8000
 ```
 
 Use `--original-file original.py` with the CLI for verified pair evidence.
 The API caches models after their first successful load. Defaults are
-`models/tfidf_v2`, `models/codebert_lora`, and `models/codet5_lora`.
+`models/tfidf_v2`, `models/codebert_lora`, `models/codet5_lora` (LoRA explainer) and
+`models/codet5_summarizer` (fine-tuned summarizer; needs `best/config.json` and
+`best/model.safetensors`, plus `training_summary.json` for its max lengths, else 384/48).
 `BUG_MODEL_ROOT` can change the parent directory. Inference never downloads models;
 transformer base weights must already be in the local cache or at the saved path.
 
@@ -193,7 +202,19 @@ transformer base weights must already be in the local cache or at the saved path
 - `POST /analyze`: same fields, with optional `original_code` for a verified change
   or `"explanation":"lora"` for explicitly unverified generated text.
   Returns classification plus `is_buggy`, `bug_type`, `explanation`,
-  `suggested_fix`, `explanation_source`, and `verified`.
+  `suggested_fix`, `explanation_source`, and `verified`. With `"summarize": true` it also
+  returns `summary` and `summary_source` (`"codet5_finetuned"`, or `null` and
+  `"unavailable"` if the summarizer cannot run; the analysis itself still succeeds).
+- `POST /summarize`: `{"code": "..."}` (same code limits, no `model` field). Returns
+  `{"summary", "summary_source": "codet5_finetuned", "model": "codet5_summarizer"}`;
+  503 if the model is missing or fails.
+
+The summary model is a full CodeT5-small fine-tune that takes the raw code (no prompt)
+and generates with beam search (4 beams). It is separate from the CodeT5 LoRA explainer
+and describes what a function does, not whether it is buggy. It leans on function names:
+for `def add(a, b): return a - b` it still says "Add two elements". Early spot checks
+were mixed: `def add(a, b): return a + b` gave "Add a new value to a list", while
+`is_adult`, `read_json` and `factorial` got reasonable summaries. Treat summaries as hints.
 
 Without an original or trained summarizer, explanation/type/fix are null. A verified
 pair can provide evidence even if the classifier predicts CLEAN; the classifier
@@ -207,6 +228,49 @@ body limit, including streamed bodies. Blank/non-string inputs and unknown model
 return 422; missing model artifacts/dependencies return 503; oversized bodies return
 413. No `eval`, `exec`, subprocess execution of source, or precise repair guessing.
 
+The API also collects feedback for retraining:
+
+- `GET /feedback`: counts of user feedback, mistakes and uncertain cases, plus the five most recent feedback rows.
+- `POST /feedback`: `{"code", "model", "predicted_label", "actual_label"}` with optional
+  `user_explanation` and `fixed_code`. Saved to `data/feedback/user_feedback.jsonl`.
+- `POST /feedback/retrain`: `{"epochs": 1-10, "mistakes_only": bool}`. Fine-tunes the CodeBERT
+  adapter on feedback into `models/codebert_lora_v2` and hot-swaps it. Synchronous; can take minutes.
+
+Predictions with bug probability from 0.40 to 0.60 are logged to
+`data/feedback/uncertain_cases.jsonl`. `BUG_FEEDBACK_DIR` changes the feedback directory.
+
+## Web interface
+
+`frontend/` is a single-page React 18 + Vite + TypeScript + Tailwind app on top of the API.
+Run the backend from `nlp-code-assistant/` (the folder that contains `src/`), then the
+frontend in a second terminal:
+
+```bash
+uvicorn src.api.app:app --reload --port 8000
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+The Vite dev server proxies `/api/*` to `http://localhost:8000/*`, so no CORS setup is needed.
+Requires Node 18.18+.
+
+- **Analyze:** Python editor (CodeMirror) with an optional original-code editor for verified
+  explanations; model switch TF-IDF / CodeBERT and explanation switch rule-based / LoRA. The
+  result shows the BUGGY/CLEAN verdict, client-measured latency, bug probability with the
+  40-60% uncertain zone, bug type, verified vs. generated explanation, and highlights the line
+  the explanation mentions. "Was this right?" sends feedback. A "Summarize function"
+  toggle (on by default when the summary model is available) adds a "What this function
+  does" section above the verdict, generated by the fine-tuned CodeT5 summarizer.
+- **Feedback:** feedback, mistake and uncertain-case counts, recent feedback, and a CodeBERT
+  retraining panel.
+- **Models:** precision, recall, F1, accuracy, median latency and artifact size for both
+  classifiers, read from `results/model_comparison.json` at build time. Run
+  `npm run sync-metrics` after re-running `src.evaluation.compare_models`.
+
+Model status pills in the top bar (TF-IDF, CodeBERT, Summary, LoRA explainer) poll
+`/health` every 15 s; models that are not trained or failed to load are disabled with a
+tooltip. Checks: `npm run typecheck`, `npm run lint`,
+`npm test` (Vitest), `npm run build`. See `frontend/README.md` for details.
+
 ## Current measured experiment
 
 This is a **new protocol** (stratified groups and ordinary TF). It is not directly
@@ -214,17 +278,27 @@ comparable to the historical sublinear-TF run below or the student notebook.
 
 | Model | BUGGY precision | BUGGY recall | BUGGY F1 | Accuracy | Inference latency |
 |---|---:|---:|---:|---:|---|
-| TF-IDF + LR | 0.5167 | 0.6751 | 0.5854 | 0.6924 | 1.59 ms median |
-| CodeBERT + LoRA | Not trained | Not trained | Not trained | Not trained | Not measured |
+| TF-IDF + LR | 0.5167 | 0.6751 | 0.5854 | 0.6924 | 1.47 ms median |
+| CodeBERT + LoRA | 0.7698 | 0.7384 | 0.7538 | 0.8449 | 244 ms median |
 
 Latency: 30 validation functions, warm CPU, batch 1, includes vectorization and
-prediction, excludes loading. Adapter-only size is not total model size; when
-CodeBERT is trained, comparison also records loaded base-plus-adapter parameter bytes.
-The TF-IDF artifacts total 1,246,638 bytes. No transformer speed/size advantage is claimed.
+prediction, excludes loading. Adapter-only size is not total model size: the TF-IDF
+artifacts total 1,246,638 bytes, the CodeBERT LoRA adapter 8,377,131 bytes, and the loaded
+base-plus-adapter parameters 502,136,848 bytes. CodeBERT + LoRA improves BUGGY F1 by
+0.17 and accuracy by 0.15 over TF-IDF, but is about 170x slower per function on CPU (median latency) and
+much larger.
+
+CodeBERT + LoRA validation: BUGGY F1 **0.7464**, accuracy **0.8391**, eval loss 0.3261.
+Test confusion matrix (rows = actual clean/buggy):
+
+```text
+[[1343, 157],
+ [ 186, 525]]
+```
 
 New split row counts: **10,320 / 2,212 / 2,211**, with **3,320 / 712 / 711** buggy rows.
-All pairwise source-ID overlaps are zero. Validation selected **(2,4)** with F1
-**0.5761**; (3,5) scored 0.5664 and (3,6) scored 0.5650. Final test confusion matrix:
+All pairwise source-ID overlaps are zero. For TF-IDF, validation selected **(2,4)** with F1
+**0.5761**; (3,5) scored 0.5664 and (3,6) scored 0.5650. Final TF-IDF test confusion matrix:
 
 ```text
 [[1051, 449],
@@ -233,8 +307,159 @@ All pairwise source-ID overlaps are zero. Validation selected **(2,4)** with F1
 
 Test mutation recall: comparison 214/303 = 0.7063; arithmetic 194/277 = 0.7004;
 boolean 72/131 = 0.5496. Comparison was easiest and boolean hardest in this run.
-See `results/model_comparison.json` and `results/tfidf_v2_metrics.json` for measured
-values, provenance and per-class reports. Models and generated data remain ignored.
+See `results/model_comparison.json`, `results/tfidf_v2_metrics.json` and
+`models/codebert_lora/metrics.json` for measured values, provenance and per-class reports. Models and generated data remain ignored.
+
+## Metrics
+
+Bug detection is scored by `src/evaluation/bug_metrics.py` and `src/evaluation/compare_models.py`;
+summaries by `src/summarization/metrics.py` and `src/summarization/evaluate_summaries.py`;
+figures by `src/evaluation/make_figures.py` (`results/figures/`). The tables below are copied
+from `results/evaluation_report.md`, which the comparison script writes from
+`results/model_comparison.json`. Thresholds and settings are chosen on validation only; the
+test split is only scored.
+
+### What each metric means and why it is here
+
+The test split is 68% CLEAN / 32% BUGGY, so a model that always says CLEAN already gets 68%
+accuracy. Metrics that stay honest under that imbalance (balanced accuracy, MCC, PR-AUC) are
+reported next to accuracy. Both models output a probability, so calibration is checked too.
+
+| Metric | One line | Why it matters here |
+|---|---|---|
+| Accuracy | Share of correct predictions | Familiar, but inflated by the 68% CLEAN majority |
+| Balanced accuracy | Mean of BUGGY recall and CLEAN recall | Always-CLEAN scores 0.5, not 0.68 |
+| BUGGY precision / recall / F1 | Of flagged functions, how many are buggy / of buggy functions, how many are flagged / their harmonic mean | The class we care about; F1 was the checkpoint-selection metric |
+| CLEAN F1, macro-F1, weighted F1 | F1 for CLEAN; unweighted and support-weighted mean over both classes | Shows whether BUGGY gains cost CLEAN performance |
+| Specificity, FPR, FNR | Clean rows kept clean; clean rows flagged; buggy rows missed | False alarms vs. missed bugs |
+| MCC | Correlation between prediction and truth, −1 to 1, 0 = chance | Single number that uses all four confusion cells; robust to imbalance |
+| Cohen's kappa | Agreement beyond chance | Same idea as MCC, common in annotation work |
+| ROC-AUC | Probability a random buggy function scores above a random clean one | Threshold-free ranking quality |
+| PR-AUC (average precision) | Area under the BUGGY precision-recall curve | Threshold-free and imbalance-aware; a random ranker scores the positive rate (0.32), not 0.5 |
+| Brier score, log loss | Squared / logarithmic error of P(BUGGY) | Overall probability quality; lower is better |
+| ECE (10 bins) + reliability diagram | Average gap between predicted P(BUGGY) and the observed BUGGY rate | Whether "80% buggy" really means 80%; matters for the UI's probability bar and uncertain zone |
+| Bootstrap 95% CI | Percentile interval from 1000 row resamples, seed 42 | How much a number could move on another sample of the same size |
+| Validation-tuned threshold | Threshold maximizing BUGGY F1 on validation, then applied to test | Shows what threshold choice alone buys, without peeking at test |
+| Per-mutation recall, clean FPR | Recall per comparison / arithmetic / boolean mutation; false-positive rate on clean rows | Which bug types are hard |
+| By length / truncation | Metrics per token-count quartile and for functions over 512 tokens | CodeBERT truncates at 512 tokens, so the changed token can be cut off |
+| McNemar's test | Exact binomial test on rows where exactly one model is right | Whether two models differ on the same test rows |
+| Paired bootstrap of the F1 difference | CI of F1(CodeBERT) − F1(TF-IDF) from shared resamples | Size and uncertainty of the improvement |
+| Latency p50 / p95, throughput | Warm CPU per-function time at batch 1; functions/second at batch 32 | Cost of the accuracy gain |
+
+Summarization metrics (all in 0–1): corpus BLEU-4 and smoothed sentence BLEU-4 (n-gram precision
+with a brevity penalty), ROUGE-1/2/L precision, recall and F1 (unigram, bigram and longest-common-
+subsequence overlap), chrF (character n-gram F-score, robust to word-form differences), METEOR
+(only when nltk and its WordNet data are installed locally; nothing is downloaded), exact match,
+average generated vs. reference length, empty-output rate, and the share of outputs that copy more
+than 80% of the input's distinct tokens. BLEU-4 and ROUGE-L get bootstrap 95% CIs.
+`results/summarization_human_eval.csv` holds 50 random test rows with blank correctness, fluency
+and specificity columns (0–2) for human raters; they are never filled automatically.
+
+### Measured: bug detection (test split, 2211 rows)
+
+**Status.** TF-IDF + LR is fully evaluated. CodeBERT + LoRA has not been run on the new
+per-row protocol yet, because that needs about 4,400 predictions and this machine has no GPU.
+Its training-time test scores are in the table in "Current measured experiment" below, but its
+MCC, AUCs, calibration, CIs and the McNemar test are still missing. To complete them, run in
+Colab from the repository root (with `data/processed/stratified_v1` and `models/codebert_lora`):
+
+```bash
+python -m src.evaluation.compare_models --models codebert --device cuda --batch-size 64 --output /content/colab_comparison.json
+```
+
+then copy `results/codebert_validation_predictions.csv` and `results/codebert_test_predictions.csv`
+into `results/` here and run:
+
+```bash
+python -m src.evaluation.compare_models --skip-predict
+python -m src.evaluation.make_figures
+cd frontend && npm run sync-metrics
+```
+
+#### Main metrics (test, threshold 0.5)
+
+| Metric | TF-IDF + LR |
+|---|---:|
+| Accuracy | 0.692 [0.672, 0.711] |
+| Balanced accuracy | 0.688 |
+| BUGGY precision | 0.517 |
+| BUGGY recall | 0.675 |
+| BUGGY F1 | 0.585 [0.554, 0.613] |
+| CLEAN F1 | 0.756 |
+| Macro-F1 | 0.670 |
+| Specificity (TNR) | 0.701 |
+| False positive rate | 0.299 |
+| False negative rate | 0.325 |
+| MCC | 0.356 [0.313, 0.394] |
+| Cohen's kappa | 0.348 |
+| ROC-AUC | 0.763 [0.743, 0.782] |
+| PR-AUC (baseline = positive rate) | 0.525 [0.485, 0.566] |
+| PR-AUC random baseline | 0.322 |
+| Brier score (lower is better) | 0.199 |
+| Log loss | 0.582 |
+| ECE, 10 bins | 0.134 |
+| CPU latency p50, batch 1 (ms) | 1.47 |
+| CPU latency p95, batch 1 (ms) | 9.62 |
+| CPU throughput, batch 32 (functions/s) | 805.7 |
+
+Values in brackets are 95% bootstrap confidence intervals.
+
+#### Recall per mutation type and clean false positives (test, threshold 0.5)
+
+| Rows | TF-IDF + LR |
+|---|---:|
+| comparison operator recall | 0.706 (214/303) |
+| arithmetic operator recall | 0.700 (194/277) |
+| boolean operator recall | 0.550 (72/131) |
+| clean rows flagged BUGGY (FPR) | 0.299 (449/1500) |
+
+#### Threshold analysis (tuned on validation, applied to test)
+
+| Model | Threshold | Test BUGGY P | Test BUGGY R | Test BUGGY F1 | Test MCC |
+|---|---:|---:|---:|---:|---:|
+| TF-IDF + LR (default 0.5) | 0.500 | 0.517 | 0.675 | 0.585 | 0.356 |
+| TF-IDF + LR (validation tuned) | 0.455 | 0.496 | 0.775 | 0.605 | 0.376 |
+
+#### Confusion matrices (test, threshold 0.5)
+
+**TF-IDF + LR** (rows = actual, columns = predicted)
+
+| | Pred. CLEAN | Pred. BUGGY |
+|---|---:|---:|
+| Actual CLEAN | 1051 (70.1%) | 449 (29.9%) |
+| Actual BUGGY | 231 (32.5%) | 480 (67.5%) |
+
+#### By code length (CodeBERT token-count quartiles of the test rows)
+
+| Group | n | TF-IDF + LR F1 / acc. |
+|---|---:|---:|
+| Q1 (43–114 tokens) | 553 | 0.500 / 0.830 |
+| Q2 (115–199 tokens) | 554 | 0.587 / 0.751 |
+| Q3 (200–409 tokens) | 552 | 0.579 / 0.641 |
+| Q4 (410–9551 tokens) | 552 | 0.614 / 0.547 |
+| fits | 1807 | 0.574 / 0.727 |
+| truncated (> 512 tokens) | 404 | 0.613 / 0.537 |
+
+#### Efficiency (warm CPU)
+
+| Model | Latency p50 (ms) | Latency p95 (ms) | Mean (ms) | Batch-32 throughput (fn/s) | Trainable params | Total params | Artifact size | Training time |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| TF-IDF + LR | 1.47 | 9.62 | 2.58 | 805.7 | 30,001 | 30,001 | 1.2 MB | not recorded |
+| CodeBERT + LoRA | 244.49 | 902.39 | 388.12 | 0.7 | 887,042 | 125,534,212 | 8.4 MB | not recorded |
+
+Latency: Warm CPU, batch=1, includes tokenization/vectorization, excludes loading; validation rows only. Throughput: batch 32 over the first 64 validation rows.
+
+CPU latency varies noticeably between runs on this machine; the numbers above are from the
+saved run in `results/model_comparison.json`. TF-IDF probabilities are over-confident for BUGGY
+(see `results/figures/reliability.png`): above 0.8 predicted, only about 50–60% of rows are buggy,
+consistent with its `class_weight="balanced"` training.
+
+### Measured: summarization
+
+Not measured yet: `data/processed/summarization_dataset.csv` is not in this checkout. With it in
+place, `python -m src.summarization.evaluate_summaries` scores CodeT5 and the AST, TF-IDF and BM25
+baselines on the same test rows and writes `results/summarization_metrics.json`,
+`results/summarization_test_predictions.csv` and the human-evaluation sheet.
 
 ## Tests and limitations
 
@@ -255,8 +480,8 @@ Transformer tests skip if optional dependencies are absent; with them installed,
 save/reload and generation using tiny random local RoBERTa/T5 fixtures. Those
 fixture scores are not model comparison results. Training never starts at import.
 
-The CPU baseline is functional. Full pretrained CodeBERT/CodeT5 fine-tuning and
-human explanation review remain outstanding. Synthetic operator replacements may
+The TF-IDF baseline and the fine-tuned CodeBERT + LoRA classifier are functional. CodeT5
+summarizer fine-tuning and human explanation review remain outstanding. Synthetic operator replacements may
 not introduce a behavioral error; original code may already contain bugs. Dataset
 sampling, repository overlap, semantic clones and CodeSearchNet pretraining exposure
 limit generalization. See the original preparation documentation below.

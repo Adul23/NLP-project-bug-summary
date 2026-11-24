@@ -11,6 +11,7 @@ const health: HealthResponse = {
     tfidf: { status: "artifacts_present_not_loaded" },
     codebert: { status: "unavailable" },
     summarizer: { status: "unavailable" },
+    code_summarizer: { status: "unavailable" },
   },
 };
 

@@ -4,7 +4,8 @@ import { UNCERTAIN_HIGH, UNCERTAIN_LOW } from "../types";
 export const MODEL_LABELS: Record<ComponentName, string> = {
   tfidf: "TF-IDF",
   codebert: "CodeBERT",
-  summarizer: "Summarizer",
+  summarizer: "LoRA explainer",
+  code_summarizer: "Summary",
 };
 
 export const STATUS_TEXT: Record<ModelStatus, string> = {

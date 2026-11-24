@@ -48,7 +48,9 @@ def test_precision_selection_rejects_unsupported():
 
 def test_class_weights_balance_the_imbalance():
     clean, buggy = class_weights([0] * 7000 + [1] * 3320)
-    assert clean == pytest.approx(10320 / 14000) and buggy == pytest.approx(10320 / 6640)
+    assert clean == pytest.approx(10320 / 14000) and buggy == pytest.approx(
+        10320 / 6640
+    )
     assert clean * 7000 == pytest.approx(buggy * 3320)  # equal total weight per class
     with pytest.raises(ValueError):
         class_weights([0, 0])
@@ -80,9 +82,17 @@ def test_replay_mixing_ratio_and_stratification():
     assert len({r["code"] for r in replay}) == len(replay)
     # Deterministic, and a ratio of 0 disables replay.
     assert rf.build_training_mix(feedback, train_frame())[0] == records
-    assert rf.build_training_mix(feedback, train_frame(), replay_ratio=0)[1]["replay_rows"] == 0
+    assert (
+        rf.build_training_mix(feedback, train_frame(), replay_ratio=0)[1]["replay_rows"]
+        == 0
+    )
     # Never more replay rows than the split can provide (c0 is excluded: it is in the feedback).
-    assert rf.build_training_mix(feedback, train_frame(4, 2), replay_ratio=50)[1]["replay_rows"] == 5
+    assert (
+        rf.build_training_mix(feedback, train_frame(4, 2), replay_ratio=50)[1][
+            "replay_rows"
+        ]
+        == 5
+    )
     with pytest.raises(ValueError):
         rf.build_training_mix([], train_frame())
 
@@ -101,10 +111,14 @@ def test_versioned_dirs_and_active_pointer(tmp_path):
     assert rf.read_active_dir(tmp_path) == tmp_path / "codebert_lora"  # no pointer yet
     first = rf.next_version_dir(tmp_path, stamp)
     assert first.name == "codebert_lora_v2_20261114T093005Z"  # the original is v1
-    (tmp_path / "codebert_lora_v2").mkdir()  # legacy un-stamped folder from the old endpoint
+    (
+        tmp_path / "codebert_lora_v2"
+    ).mkdir()  # legacy un-stamped folder from the old endpoint
     (tmp_path / "codebert_lora_v7_20260101T000000Z").mkdir()
     (tmp_path / "codebert_lora_v9_notes.txt").write_text("not a folder")
-    assert rf.next_version_dir(tmp_path, stamp).name == "codebert_lora_v8_20261114T093005Z"
+    assert (
+        rf.next_version_dir(tmp_path, stamp).name == "codebert_lora_v8_20261114T093005Z"
+    )
 
     target = tmp_path / "codebert_lora_v7_20260101T000000Z"
     rf.write_active_pointer(tmp_path, target, previous=tmp_path / "codebert_lora")
@@ -131,7 +145,13 @@ def job_api(tmp_path, monkeypatch):
         (models / name / "training_config.json").write_text('{"status": "trained"}')
     feedback.mkdir()
     (feedback / "user_feedback.jsonl").write_text(
-        json.dumps({"code": "def f(a, b):\n    return a - b", "actual_label": "BUGGY", "is_mistake": True})
+        json.dumps(
+            {
+                "code": "def f(a, b):\n    return a - b",
+                "actual_label": "BUGGY",
+                "is_mistake": True,
+            }
+        )
         + "\n"
     )
     state = {"release": threading.Event(), "calls": [], "outcome": "accepted"}
@@ -171,8 +191,12 @@ def wait_for(client, job_id, statuses=("done", "failed", "rejected")):
 def test_retrain_job_lifecycle_and_conflict(job_api):
     client, state, models = job_api
     assert client.get("/feedback/retrain").json() == {"job": None}
-    started = client.post("/feedback/retrain", json={"epochs": 2, "mistakes_only": True})
-    assert started.status_code == 202  # returns immediately, training runs in the background
+    started = client.post(
+        "/feedback/retrain", json={"epochs": 2, "mistakes_only": True}
+    )
+    assert (
+        started.status_code == 202
+    )  # returns immediately, training runs in the background
     job_id = started.json()["job_id"]
     assert started.json()["status"] == "queued"
 
@@ -182,10 +206,17 @@ def test_retrain_job_lifecycle_and_conflict(job_api):
         if running["progress"].get("epoch"):
             break
         time.sleep(0.02)
-    assert running["progress"] == {"phase": "training", "epoch": 1, "epochs": 2, "loss": 0.5}
+    assert running["progress"] == {
+        "phase": "training",
+        "epoch": 1,
+        "epochs": 2,
+        "loss": 0.5,
+    }
     assert running["metrics"] is None
 
-    conflict = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False})
+    conflict = client.post(
+        "/feedback/retrain", json={"epochs": 1, "mistakes_only": False}
+    )
     assert conflict.status_code == 409  # single-job lock
     assert len(state["calls"]) == 1
 
@@ -198,27 +229,36 @@ def test_retrain_job_lifecycle_and_conflict(job_api):
     assert client.get("/feedback/retrain").json()["job"]["job_id"] == job_id
     call = state["calls"][0]
     assert call["epochs"] == 2 and call["mistakes_only"] is True
-    assert call["base_lora_dir"] == models / "codebert_lora" and call["model_root"] == models
+    assert (
+        call["base_lora_dir"] == models / "codebert_lora"
+        and call["model_root"] == models
+    )
 
     # The hot swap happened: the next job continues from the accepted adapter.
     again = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False})
     assert again.status_code == 202
     wait_for(client, again.json()["job_id"])
-    assert state["calls"][1]["base_lora_dir"].name == "codebert_lora_v3_20261114T000000Z"
+    assert (
+        state["calls"][1]["base_lora_dir"].name == "codebert_lora_v3_20261114T000000Z"
+    )
 
 
 def test_retrain_job_rejected_failed_and_unknown(job_api):
     client, state, models = job_api
     state["release"].set()
     state["outcome"] = "rejected_worse"
-    job_id = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False}).json()["job_id"]
+    job_id = client.post(
+        "/feedback/retrain", json={"epochs": 1, "mistakes_only": False}
+    ).json()["job_id"]
     rejected = wait_for(client, job_id)
     assert rejected["status"] == "rejected" and rejected["result"] == "rejected_worse"
     assert rejected["metrics"]["new"]["bug_f1"] == 0.4
     assert rejected["active_model_dir"] == str(models / "codebert_lora")  # not swapped
 
     state["outcome"] = "error"
-    job_id = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False}).json()["job_id"]
+    job_id = client.post(
+        "/feedback/retrain", json={"epochs": 1, "mistakes_only": False}
+    ).json()["job_id"]
     failed = wait_for(client, job_id)
     assert failed["status"] == "failed" and failed["error"] == "Split dir is missing"
 
@@ -229,7 +269,9 @@ def test_retrain_job_rejected_failed_and_unknown(job_api):
 def test_retrain_validates_before_starting_a_job(job_api, tmp_path):
     client, state, models = job_api
     (tmp_path / "feedback" / "user_feedback.jsonl").write_text("")
-    response = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False})
+    response = client.post(
+        "/feedback/retrain", json={"epochs": 1, "mistakes_only": False}
+    )
     assert response.status_code == 422 and not state["calls"]
     assert client.get("/feedback/retrain").json() == {"job": None}
 
@@ -239,30 +281,37 @@ def test_api_reads_active_pointer_at_startup(job_api, tmp_path):
     rf.write_active_pointer(models, models / "codebert_lora_v2_20260101T000000Z")
     state["release"].set()
     with TestClient(create_app(models, tmp_path / "feedback")) as client:
-        job_id = client.post("/feedback/retrain", json={"epochs": 1, "mistakes_only": False}).json()["job_id"]
+        job_id = client.post(
+            "/feedback/retrain", json={"epochs": 1, "mistakes_only": False}
+        ).json()["job_id"]
         wait_for(client, job_id)
-    assert state["calls"][-1]["base_lora_dir"] == models / "codebert_lora_v2_20260101T000000Z"
+    assert (
+        state["calls"][-1]["base_lora_dir"]
+        == models / "codebert_lora_v2_20260101T000000Z"
+    )
 
 
 # --- tests below need the optional transformer stack -----------------------------------
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("peft")
-from src.bug_detection.lora_common import (  # noqa: E402
+from src.bug_detection.lora_common import (
     classifier_target_modules,
     tokenize_once,
     tune_threshold,
 )
-from test_lora_local import tiny_base  # noqa: E402
-from tokenizers.processors import TemplateProcessing  # noqa: E402
-from transformers import AutoTokenizer  # noqa: E402
+from test_lora_local import tiny_base
+from tokenizers.processors import TemplateProcessing
+from transformers import AutoTokenizer
 
 TEXTS = ["def x", "def x return x + 1 - x", "return " * 30, "x + 1 " * 4]
 
 
 @pytest.mark.parametrize("specials", [False, True])
 @pytest.mark.parametrize("side", ["right", "left"])
-def test_single_pass_tokenization_matches_tokenizer_truncation(tmp_path, specials, side):
+def test_single_pass_tokenization_matches_tokenizer_truncation(
+    tmp_path, specials, side
+):
     tiny_base(tmp_path / "base")
     tokenizer = AutoTokenizer.from_pretrained(tmp_path / "base")
     tokenizer.truncation_side = side
@@ -300,7 +349,9 @@ def test_single_pass_tokenization_matches_tokenizer_truncation(tmp_path, special
 def test_threshold_tuning_and_lora_targets(tmp_path):
     threshold, f1 = tune_threshold([0, 0, 1, 1, 1], [0.1, 0.45, 0.42, 0.6, 0.9])
     assert threshold == pytest.approx(0.42) and f1 == pytest.approx(6 / 7)
-    assert tune_threshold([0, 1], [0.2, 0.8])[0] == pytest.approx(0.5)  # ties stay near 0.5
+    assert tune_threshold([0, 1], [0.2, 0.8])[0] == pytest.approx(
+        0.5
+    )  # ties stay near 0.5
     model = tiny_base(tmp_path / "base")
     qv = classifier_target_modules(model, "qv")
     qkv = classifier_target_modules(model, "qkv")
@@ -356,7 +407,15 @@ def trained(tmp_path_factory):
     feedback = root / "user_feedback.jsonl"
     feedback.write_text(
         "".join(
-            json.dumps({"code": code, "actual_label": label, "is_mistake": True, "fixed_code": fixed}) + "\n"
+            json.dumps(
+                {
+                    "code": code,
+                    "actual_label": label,
+                    "is_mistake": True,
+                    "fixed_code": fixed,
+                }
+            )
+            + "\n"
             for code, label, fixed in [
                 ("def g(x): return x - 1", "BUGGY", "def g(x): return x + 1"),
                 ("def h(x): return x + 1", "CLEAN", None),
@@ -364,7 +423,12 @@ def trained(tmp_path_factory):
             ]
         )
     )
-    return {"root": root, "models": models, "splits": root / "splits", "feedback": feedback}
+    return {
+        "root": root,
+        "models": models,
+        "splits": root / "splits",
+        "feedback": feedback,
+    }
 
 
 def test_optimized_training_artifacts_stay_loadable(trained):
@@ -373,7 +437,10 @@ def test_optimized_training_artifacts_stay_loadable(trained):
     folder = trained["models"] / "codebert_lora"
     config = json.loads((folder / "training_config.json").read_text())
     report = json.loads((folder / "metrics.json").read_text())
-    assert config["status"] == "trained" and (folder / "adapter/adapter_model.safetensors").exists()
+    assert (
+        config["status"] == "trained"
+        and (folder / "adapter/adapter_model.safetensors").exists()
+    )
     runtime = config["runtime"]
     assert runtime["precision"] == "fp32" and runtime["peak_gpu_memory_bytes"] is None
     assert runtime["wall_clock_seconds"] > 0 and runtime["train_samples_per_second"] > 0
@@ -383,16 +450,34 @@ def test_optimized_training_artifacts_stay_loadable(trained):
     assert set(config["truncation_fraction"]) == {"train", "validation", "test"}
     # Same metrics protocol/keys as before; the tuned threshold is stored next to argmax results.
     for split in ("validation", "test", "validation_argmax", "test_argmax"):
-        assert {"accuracy", "bug_f1", "classification_report", "confusion_matrix"} <= set(report[split])
+        assert {
+            "accuracy",
+            "bug_f1",
+            "classification_report",
+            "confusion_matrix",
+        } <= set(report[split])
     assert 0.05 <= config["decision_threshold"] <= 0.95
 
     predictor = LoraPredictor(folder)
     result = predictor.predict("def f(x): return x - 1")
     threshold = config["decision_threshold"]
-    assert result["label"] == ("BUGGY" if result["bug_probability"] >= threshold else "CLEAN")
+    assert result["label"] == (
+        "BUGGY" if result["bug_probability"] >= threshold else "CLEAN"
+    )
     predictor.config.pop("decision_threshold")  # without one, argmax is used as before
     plain = predictor.predict("def f(x): return x - 1")
     assert plain["label"] == ("BUGGY" if plain["bug_probability"] > 0.5 else "CLEAN")
+
+    unmerged = LoraPredictor(folder, merge=False)
+    code = "def f(x): return x - 1"
+    assert type(predictor.model).__name__ == "RobertaForSequenceClassification"
+    assert (
+        abs(
+            predictor.predict(code)["bug_probability"]
+            - unmerged.predict(code)["bug_probability"]
+        )
+        < 1e-5
+    )
 
 
 def test_feedback_retrain_accepts_into_versioned_dir(trained):
@@ -412,29 +497,56 @@ def test_feedback_retrain_accepts_into_versioned_dir(trained):
     )
     out = models / result["output_dir"].rsplit("/", 1)[-1]
     assert result["status"] == "accepted"
-    assert out.parent == models and out.name.startswith("codebert_lora_v2_") and out != base
+    assert (
+        out.parent == models
+        and out.name.startswith("codebert_lora_v2_")
+        and out != base
+    )
     # The parent adapter was only read, never written.
     assert before == {p: p.stat().st_mtime_ns for p in base.rglob("*") if p.is_file()}
     assert rf.read_active_dir(models) == out
     config = json.loads((out / "training_config.json").read_text())
     assert config["status"] == "trained" and config["parent_lora_dir"] == str(base)
     assert config["feedback_mix"]["feedback_rows"] == 3  # 2 valid rows + 1 fixed_code
-    assert config["feedback_mix"]["replay_rows"] == 12 and config["feedback_mix"]["total_rows"] == 18
+    assert (
+        config["feedback_mix"]["replay_rows"] == 12
+        and config["feedback_mix"]["total_rows"] == 18
+    )
     assert config["feedback_gate"]["accepted"] is True
-    assert config["feedback_gate"]["old_source"] == "recorded metrics.json"  # no extra validation pass
+    assert (
+        config["feedback_gate"]["old_source"] == "recorded metrics.json"
+    )  # no extra validation pass
     assert set(result["new_metrics"]) == set(rf.GATE_KEYS)
-    assert json.loads((out / "metrics.json").read_text())["validation"]["bug_f1"] == result["new_metrics"]["bug_f1"]
-    assert [s["phase"] for s in seen] == ["preparing", "training", "evaluating_new", "saving"]
+    assert (
+        json.loads((out / "metrics.json").read_text())["validation"]["bug_f1"]
+        == result["new_metrics"]["bug_f1"]
+    )
+    assert [s["phase"] for s in seen] == [
+        "preparing",
+        "training",
+        "evaluating_new",
+        "saving",
+    ]
     assert seen[1]["epoch"] == 1 and seen[1]["loss"] > 0
-    assert 0 <= LoraPredictor(out).predict("def g(x): return x - 1")["bug_probability"] <= 1
+    assert (
+        0
+        <= LoraPredictor(out).predict("def g(x): return x - 1")["bug_probability"]
+        <= 1
+    )
 
 
 def test_feedback_retrain_rejects_worse_model(trained, monkeypatch):
     models = trained["models"]
     active = rf.read_active_dir(models)
-    pointer = (models / rf.ACTIVE_POINTER).read_text() if (models / rf.ACTIVE_POINTER).exists() else None
+    pointer = (
+        (models / rf.ACTIVE_POINTER).read_text()
+        if (models / rf.ACTIVE_POINTER).exists()
+        else None
+    )
     worse = {"accuracy": 0.1, "bug_precision": 0.0, "bug_recall": 0.0, "bug_f1": 0.0}
-    monkeypatch.setattr(rf, "cached_validation_metrics", lambda *_: dict(worse, bug_f1=0.9))
+    monkeypatch.setattr(
+        rf, "cached_validation_metrics", lambda *_: dict(worse, bug_f1=0.9)
+    )
     monkeypatch.setattr(rf, "evaluate_adapter", lambda *a, **k: dict(worse))
     result = rf.retrain_lora(
         feedback_file=trained["feedback"],
@@ -450,10 +562,20 @@ def test_feedback_retrain_rejects_worse_model(trained, monkeypatch):
     rejected = models / result["output_dir"].rsplit("/", 1)[-1]
     assert rejected != active and rejected.name.startswith("codebert_lora_v")
     gate = json.loads((rejected / "training_config.json").read_text())["feedback_gate"]
-    assert gate["accepted"] is False and gate["old"]["bug_f1"] == 0.9 and gate["new"]["bug_f1"] == 0.0
+    assert (
+        gate["accepted"] is False
+        and gate["old"]["bug_f1"] == 0.9
+        and gate["new"]["bug_f1"] == 0.0
+    )
 
 
 def test_feedback_retrain_refuses_to_overwrite_its_source(trained):
     base = trained["models"] / "codebert_lora"
     with pytest.raises(ValueError, match="must differ"):
-        rf.retrain_lora(trained["feedback"], base, output_dir=base, split_dir=trained["splits"], epochs=1)
+        rf.retrain_lora(
+            trained["feedback"],
+            base,
+            output_dir=base,
+            split_dir=trained["splits"],
+            epochs=1,
+        )
