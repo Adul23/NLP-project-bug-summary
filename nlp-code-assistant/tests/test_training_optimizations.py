@@ -479,6 +479,17 @@ def test_optimized_training_artifacts_stay_loadable(trained):
         < 1e-5
     )
 
+    codes = [
+        "def f(x): return x - 1",
+        "def g(a, b):\n    if a > b:\n        return a\n    return b",
+    ]
+    batch = predictor.predict_batch(codes)
+    for code, result in zip(codes, batch):
+        assert (
+            abs(result["bug_probability"] - predictor.predict(code)["bug_probability"])
+            < 1e-4
+        )
+
 
 def test_feedback_retrain_accepts_into_versioned_dir(trained):
     from src.inference.models import LoraPredictor

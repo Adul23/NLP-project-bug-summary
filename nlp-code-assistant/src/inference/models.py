@@ -18,16 +18,22 @@ class TfidfPredictor:
         if list(self.model.classes_) != [0, 1]:
             raise ValueError("Artifact label mapping must be 0=CLEAN, 1=BUGGY")
 
+    def predict_batch(self, codes):
+        features = self.vectorizer.transform(codes)
+        probabilities = self.model.predict_proba(features)[:, 1]
+        labels = self.model.predict(features)
+        return [
+            {
+                "label": "BUGGY" if label else "CLEAN",
+                "bug_probability": float(p),
+                "confidence": float(p) if label else float(1 - p),
+                "model": "tfidf",
+            }
+            for p, label in zip(probabilities, labels)
+        ]
+
     def predict(self, code):
-        features = self.vectorizer.transform([code])
-        probability = float(self.model.predict_proba(features)[0, 1])
-        label = int(self.model.predict(features)[0])
-        return {
-            "label": "BUGGY" if label else "CLEAN",
-            "bug_probability": probability,
-            "confidence": probability if label else 1 - probability,
-            "model": "tfidf",
-        }
+        return self.predict_batch([code])[0]
 
 
 class LoraPredictor:
@@ -78,30 +84,38 @@ class LoraPredictor:
         self.model = model.to(device).eval()
         self.torch = torch
 
-    def predict(self, code):
+    def predict_batch(self, codes, batch_size=16):
         if self.summarizer:
             raise ValueError("Use generate for a summarizer")
-        inputs = self.tokenizer(
-            code,
-            return_tensors="pt",
-            truncation=True,
-            max_length=self.config["max_length"],
-            return_token_type_ids=False,
-        ).to(self.model.device)
-        with self.torch.inference_mode():
-            probabilities = self.model(**inputs).logits.softmax(-1)[0]
-        p = float(probabilities[1])
-        # A threshold tuned on validation (train_lora --threshold-tune) replaces argmax if stored.
         threshold = self.config.get("decision_threshold")
-        label = (
-            int(probabilities.argmax()) if threshold is None else int(p >= threshold)
-        )
-        return {
-            "label": "BUGGY" if label else "CLEAN",
-            "bug_probability": p,
-            "confidence": p if label else 1 - p,
-            "model": "codebert",
-        }
+        results = []
+        for start in range(0, len(codes), batch_size):
+            inputs = self.tokenizer(
+                codes[start : start + batch_size],
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=self.config["max_length"],
+                return_token_type_ids=False,
+            ).to(self.model.device)
+            with self.torch.inference_mode():
+                probabilities = self.model(**inputs).logits.softmax(-1)
+            for row in probabilities:
+                p = float(row[1])
+                # Порог, подобранный на validation, если сохранён; иначе argmax.
+                label = int(row.argmax()) if threshold is None else int(p >= threshold)
+                results.append(
+                    {
+                        "label": "BUGGY" if label else "CLEAN",
+                        "bug_probability": p,
+                        "confidence": p if label else 1 - p,
+                        "model": "codebert",
+                    }
+                )
+        return results
+
+    def predict(self, code):
+        return self.predict_batch([code])[0]
 
     def generate(self, code):
         if not self.summarizer:

@@ -199,3 +199,21 @@ def test_streamed_body_limit():
 
     asyncio.run(BodyLimit(downstream)({"type": "http"}, receive, send))
     assert responses[0]["status"] == 413
+
+
+def test_tfidf_predict_batch_matches_predict(shared, tmp_path):
+    from src.inference.models import TfidfPredictor
+
+    train(shared, tmp_path / "tfidf_v2")
+    predictor = TfidfPredictor(tmp_path / "tfidf_v2")
+    codes = [
+        "def f(x): return x + 1",
+        "def g(x): return x - 1",
+        "def h(a, b): return a != b",
+    ]
+    batch = predictor.predict_batch(codes)
+    assert len(batch) == 3
+    for code, result in zip(codes, batch):
+        single = predictor.predict(code)
+        assert result["label"] == single["label"]
+        assert abs(result["bug_probability"] - single["bug_probability"]) < 1e-9
