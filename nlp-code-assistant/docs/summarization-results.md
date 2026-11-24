@@ -1,14 +1,14 @@
 # Code summarization results
 
 Task: one-sentence English summary of a Python function (docstring removed from the input).
-Status: validation results complete; **the test split has not been scored** (one final run is planned at the very end, **TBD**). Every number below comes from the saved result files (`results_summarization/`, `checkpoints/codet5_summarizer*/`).
+Status: complete. Validation results are used for all choices; the test split was scored **once** at the end (`--compare --split test --confirm-final-test`, LoRA r16 as the LoRA model). Every number below comes from the saved result files (`results_summarization/`, `checkpoints/codet5_summarizer*/`).
 
 ## Data
 
 - Source: CodeSearchNet (Python) functions from the bug-detection pipeline. Code never executes.
 - Summary = first sentence of the original docstring (docstrings were removed from the code by the preprocessing step). Docstring noise is cleaned (parameter lists, links, doctests); too-short, too-long, empty and non-English summaries are dropped. Rows whose summary appears verbatim inside the code (comments, log strings) are removed to avoid leakage.
 - Only clean (`label=0`) functions are used.
-- Split: 70/15/15 by `source_id`, the shared `stratified_v1` split (applied with `apply_shared_split.py`; only the `split` column changes). Train 6,524, validation 1,384; test: TBD (not opened).
+- Split: 70/15/15 by `source_id`, the shared `stratified_v1` split (applied with `apply_shared_split.py`; only the `split` column changes). Train 6,524, validation 1,384; test 1,400.
 - Training reads train and validation only.
 
 ## Methods
@@ -39,7 +39,26 @@ Produced by `python -m src.summarization.evaluate_model --compare` (`results_sum
 
 † Extra run, evaluated separately with `evaluate_model --lora-adapter ...` (`checkpoints/codet5_summarizer_lora_r16/metrics_validation.json`): same split, 1,384 examples, same generation settings. It is not yet a row of the `--compare` output files.
 
-Test split: **TBD** (one time, at the very end).
+## Test results (1,400 examples, scored once)
+
+From `results_summarization/comparison_test.md` and `.json`. Same settings as the validation table (4 beams, default length penalty); the LoRA row is the r16 adapter, chosen on validation. All rows have 1,400 examples.
+
+| Method | BLEU-4 | ROUGE-L F1 | Latency median (ms) | Latency mean (ms) | Artifact (MB) | Trainable params |
+|---|---|---|---|---|---|---|
+| AST template | 0.0079 | 0.2237 | — | — | — | — |
+| TF-IDF retrieval | 0.1840 | 0.3283 | — | — | — | — |
+| BM25 retrieval | 0.1770 | 0.3251 | — | — | — | — |
+| CodeT5-small full FT | 0.1398 | 0.3862 | 118.5 | 125.4 | 245.12 | 60,492,288 |
+| CodeT5-small LoRA (r16) | 0.1066 | 0.3620 | 133.6 | 144.6 | 4.74 | 1,179,648 |
+
+Other test numbers: exact match 0.0550 (full FT) and 0.0400 (LoRA r16); mean words in predictions 6.48 and 6.25 against 9.26 in the references; brevity penalty 0.6512 and 0.6175.
+
+**Test conclusions**
+
+- Full FT has the best ROUGE-L (0.3862) of all methods. LoRA r16 is next among the CodeT5 models: 0.0242 ROUGE-L and 0.0332 BLEU-4 below full FT, at 4.74 MB against 245.12 MB (about 52 times smaller) and 1.91% of the trainable parameters. Both are above the retrieval baselines by ROUGE-L (0.3283 and 0.3251).
+- The retrieval baselines are higher by BLEU-4 (TF-IDF 0.1840, BM25 0.1770 against 0.1398 and 0.1066). They return existing training summaries and do not generate text for a new function; see Conclusions for possible reasons.
+- Test agrees with validation: the ranking of methods by ROUGE-L is the same, and the numbers are close (full FT ROUGE-L 0.3796 on validation, 0.3862 on test; LoRA r16 0.3607 and 0.3620; full FT BLEU-4 0.1390 and 0.1398; LoRA r16 0.1066 and 0.1066). No sign of overfitting to the validation split.
+- **Final model:** full FT stays the default for `summarize()` (auto backend). LoRA r16 is the small-artifact option (the `lora` backend uses it by default when its folder exists, otherwise r8). The test split was run once and was not used for any choice.
 
 More numbers for the CodeT5 models:
 
@@ -146,7 +165,7 @@ Examples from the full-FT review show the same patterns, e.g. "Get state and exi
 - Identical summaries for different functions are kept on purpose (not treated as duplicates).
 - LoRA r16 was found by one extra run with five changed settings and chosen on validation; other ranks, learning rates or scalings were not tried, so LoRA may still be under-tuned. Its validation scores come from a separate evaluation call, not from the `--compare` output files.
 - Latency was measured on one machine (Apple M4, MPS) and is not representative for other hardware.
-- Test split: not evaluated. One final run is planned after all choices are fixed (`--split test --confirm-final-test`).
+- Test split: scored once, after all choices (generation settings, final LoRA) were fixed on validation. Results are from one seed and one run per method.
 
 ## Reproduction
 
@@ -156,4 +175,4 @@ See the "Code summarization" section of the README.
 
 - Not added (would need new dependencies): METEOR, BERTScore/CodeBERTScore, a human rating of a sample.
 - Extra LoRA run (done): `python -m src.summarization.train_codet5_lora --lora-r 16 --lora-targets qkvo --lr 5e-4 --epochs 12 --output checkpoints/codet5_summarizer_lora_r16`.
-- To use the r16 adapter in `summarize()`: `--checkpoint checkpoints/codet5_summarizer_lora_r16/best` (the `lora` backend default still points to the r8 folder).
+- `summarize()` with the `lora` backend uses `checkpoints/codet5_summarizer_lora_r16/best` if it exists, otherwise the r8 folder.

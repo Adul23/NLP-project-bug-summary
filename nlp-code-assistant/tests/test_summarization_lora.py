@@ -132,6 +132,7 @@ def folders(tmp_path, monkeypatch):
     full, lora = tmp_path / "full", tmp_path / "lora"
     monkeypatch.setattr(summ, "DEFAULT_CHECKPOINT", full)
     monkeypatch.setattr(summ, "DEFAULT_LORA_CHECKPOINT", lora)
+    monkeypatch.setattr(summ, "DEFAULT_LORA_R16_CHECKPOINT", tmp_path / "lora_r16")
     return full, lora
 
 
@@ -153,6 +154,20 @@ def test_explicit_backend_and_checkpoint(folders, monkeypatch):
     assert summ.resolve_checkpoint(backend="lora") == summ.Path("/env")
     with pytest.raises(ValueError):
         summ.resolve_checkpoint(backend="gpt")
+
+
+def test_lora_backend_prefers_r16_then_r8(folders, tmp_path):
+    full, lora = folders
+    r16 = tmp_path / "lora_r16"
+    assert summ.resolve_checkpoint(backend="lora") == lora  # no r16: r8 folder
+    make_lora(lora)
+    assert summ.resolve_checkpoint(backend="lora") == lora
+    make_lora(r16)
+    assert summ.resolve_checkpoint(backend="lora") == r16
+    assert summ.resolve_checkpoint() == r16  # auto without full: the preferred LoRA
+    make_full(full)
+    assert summ.resolve_checkpoint() == full  # auto keeps preferring full
+    assert summ.resolve_checkpoint(backend="full") == full
 
 
 def test_missing_checkpoints_error_is_clear(tmp_path):

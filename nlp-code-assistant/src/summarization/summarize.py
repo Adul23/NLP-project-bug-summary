@@ -4,7 +4,8 @@
     summarize("def add(a, b):\\n    return a + b")
 
 Two backends: `full` (fully fine-tuned model, checkpoints/codet5_summarizer/best) and
-`lora` (adapter on codet5-small, checkpoints/codet5_summarizer_lora/best). The checkpoint
+`lora` (adapter on codet5-small: checkpoints/codet5_summarizer_lora_r16/best if it exists,
+otherwise checkpoints/codet5_summarizer_lora/best, the r8 adapter). The checkpoint
 is loaded lazily on the first call. Which folder is used:
   1. the `checkpoint` argument (full model or LoRA adapter, detected by adapter_config.json),
   2. else the CODET5_SUMMARIZER_CHECKPOINT environment variable (same detection),
@@ -26,7 +27,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CHECKPOINT = PROJECT_ROOT / "checkpoints/codet5_summarizer/best"
-DEFAULT_LORA_CHECKPOINT = PROJECT_ROOT / "checkpoints/codet5_summarizer_lora/best"
+DEFAULT_LORA_CHECKPOINT = PROJECT_ROOT / "checkpoints/codet5_summarizer_lora/best"  # r8
+DEFAULT_LORA_R16_CHECKPOINT = PROJECT_ROOT / "checkpoints/codet5_summarizer_lora_r16/best"
 BACKENDS = ("auto", "full", "lora")
 CHECKPOINT_ENV = "CODET5_SUMMARIZER_CHECKPOINT"
 MAX_CODE_CHARS = 20000
@@ -36,6 +38,13 @@ NUM_BEAMS = 4
 LENGTH_PENALTY = 2.0
 MAX_LENGTH = 384  # input tokens, same as training
 MAX_NEW_TOKENS = 48  # same as max_target in training
+
+
+def default_lora_checkpoint() -> Path:
+    """The r16 adapter (final LoRA choice) if present, otherwise the r8 adapter."""
+    if (DEFAULT_LORA_R16_CHECKPOINT / "adapter_config.json").is_file():
+        return DEFAULT_LORA_R16_CHECKPOINT
+    return DEFAULT_LORA_CHECKPOINT
 
 
 def resolve_checkpoint(checkpoint: str | Path | None = None, backend: str | None = None) -> Path:
@@ -50,11 +59,12 @@ def resolve_checkpoint(checkpoint: str | Path | None = None, backend: str | None
     if backend == "full":
         return DEFAULT_CHECKPOINT
     if backend == "lora":
-        return DEFAULT_LORA_CHECKPOINT
+        return default_lora_checkpoint()
     if (DEFAULT_CHECKPOINT / "config.json").is_file():
         return DEFAULT_CHECKPOINT
-    if (DEFAULT_LORA_CHECKPOINT / "adapter_config.json").is_file():
-        return DEFAULT_LORA_CHECKPOINT
+    lora = default_lora_checkpoint()
+    if (lora / "adapter_config.json").is_file():
+        return lora
     return DEFAULT_CHECKPOINT  # nothing found: the loader explains what is missing
 
 
