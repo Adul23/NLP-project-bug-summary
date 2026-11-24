@@ -490,6 +490,21 @@ def test_optimized_training_artifacts_stay_loadable(trained):
             < 1e-4
         )
 
+    import pandas as pd
+
+    preds = pd.read_csv(folder / "test_predictions.csv")
+    assert list(preds.columns) == [
+        "sample_id",
+        "source_id",
+        "label",
+        "mutation_type",
+        "predicted_label",
+        "bug_probability",
+    ]
+    assert len(preds) == len(pd.read_csv(trained["splits"] / "test.csv"))
+    assert preds.bug_probability.between(0, 1).all()
+    assert config["seed"] == 42
+
 
 def test_feedback_retrain_accepts_into_versioned_dir(trained):
     from src.inference.models import LoraPredictor
