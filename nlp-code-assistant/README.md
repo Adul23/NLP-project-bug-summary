@@ -488,6 +488,46 @@ limit generalization. See the original preparation documentation below.
 
 ---
 
+## Code summarization
+
+One-sentence summaries of Python functions (CodeT5-small, full fine-tuning or LoRA) with
+retrieval and rule-based baselines. Code is never executed. Details and results:
+`docs/summarization-results.md`. Run from `nlp-code-assistant/`; install
+`requirements-transformers.txt` first. Checkpoints go to `checkpoints/` (outside git).
+
+```bash
+# 1. Dataset (data/processed/summarization_dataset.csv), then the shared split
+python -m src.summarization.build_summary_dataset
+python -m src.summarization.apply_shared_split
+
+# 2. Baselines (validation): ast | tfidf | bm25
+python -m src.summarization.evaluate_baseline --method bm25
+
+# 3. Training (the output folder must be empty; add --limit 64 --epochs 1 for a smoke test)
+python -m src.summarization.train_codet5        # full fine-tuning -> checkpoints/codet5_summarizer
+python -m src.summarization.train_codet5_lora   # LoRA r=8 -> checkpoints/codet5_summarizer_lora
+
+# 4. Evaluation on validation (full model, LoRA adapter, or one comparison table)
+python -m src.summarization.evaluate_model
+python -m src.summarization.evaluate_model --lora-adapter checkpoints/codet5_summarizer_lora/best
+python -m src.summarization.evaluate_model --compare    # -> results_summarization/
+
+# 5. Error review of the saved validation predictions
+python -m src.summarization.review_examples
+```
+
+The test split is only scored with `--confirm-final-test` (final evaluation, once).
+
+```python
+from src.summarization.summarize import summarize
+
+summarize("def add(a, b):\n    return a + b")                # auto: full if found, else LoRA
+summarize(code, backend="lora")                               # or backend="full"
+```
+
+CLI: `python -m src.summarization.summarize --file f.py --backend {auto,full,lora}`.
+`CODET5_SUMMARIZER_CHECKPOINT` can point to any full or LoRA checkpoint folder.
+
 ## Historical data preparation and baseline (2026-09-28)
 
 Конвейер собирает **10 000 уникальных Python-функций CodeSearchNet** и создаёт
