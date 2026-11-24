@@ -64,3 +64,28 @@ def repair_candidates(code: str) -> list[dict]:
                     }
                 )
     return candidates
+
+
+def localize(code: str, predictor, top_k: int = 3) -> dict:
+    """Rank repair candidates by how much they lower the model's bug probability.
+
+    `predictor` is anything with predict_batch(codes) -> [{"bug_probability": ...}, ...]
+    (TfidfPredictor or LoraPredictor). The original and all candidates go in one batch.
+    """
+    candidates = repair_candidates(code)
+    scores = predictor.predict_batch([code] + [c["code"] for c in candidates])
+    before = scores[0]["bug_probability"]
+    ranked = [
+        {
+            **c,
+            "bug_probability_after": s["bug_probability"],
+            "drop": before - s["bug_probability"],
+        }
+        for c, s in zip(candidates, scores[1:])
+    ]
+    ranked.sort(key=lambda c: c["drop"], reverse=True)
+    return {
+        "bug_probability": before,
+        "n_candidates": len(ranked),
+        "candidates": ranked[:top_k],
+    }
