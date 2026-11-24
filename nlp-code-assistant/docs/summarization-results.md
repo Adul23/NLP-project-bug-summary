@@ -19,7 +19,8 @@ Status: validation results complete; **the test split has not been scored** (one
 | TF-IDF retrieval | Returns the summary of the most similar train function (TF-IDF over identifier sub-tokens). Index = train only. |
 | BM25 retrieval | Same with BM25 ranking. |
 | CodeT5-small full FT | `Salesforce/codet5-small`, all weights trained. lr 1e-4, batch 8, input 384 / target 48 tokens, seed 42, early stopping on validation loss (patience 2). |
-| CodeT5-small LoRA | Same base model with frozen weights and LoRA adapters (`train_codet5_lora.py`): r=8, alpha=16, dropout 0.1, targets q and v, lr 2e-4. Same data, tokenization, batch size, seed and stopping rule as full FT. fp32. |
+| CodeT5-small LoRA (r8) | Same base model with frozen weights and LoRA adapters (`train_codet5_lora.py`): r=8, alpha=16, dropout 0.1, targets q and v, lr 2e-4, up to 8 epochs. Same data, tokenization, batch size, seed and stopping rule as full FT. fp32. |
+| CodeT5-small LoRA (r16) | Extra run to check for headroom: r=16, alpha=16, targets q, k, v and o, lr 5e-4, up to 12 epochs. Everything else as r8. |
 
 Metrics (`metrics.py`, the same for every method): corpus BLEU-4 and mean ROUGE-L F1 over lowercase word tokens (own pure-Python implementation, unsmoothed). Latency: one example per call (batch 1), warmed-up model, 100 examples, beam search 4. Artifact size: full model = whole checkpoint folder; LoRA = adapter weights and config only (the tokenizer and base model come from the base checkpoint).
 
@@ -33,25 +34,30 @@ Produced by `python -m src.summarization.evaluate_model --compare` (`results_sum
 | TF-IDF retrieval | 0.1934 | 0.3270 | — | — | — | — |
 | BM25 retrieval | 0.1804 | 0.3236 | — | — | — | — |
 | CodeT5-small full FT | 0.1390 | 0.3796 | 112.2 | 121.8 | 245.12 | 60,492,288 |
-| CodeT5-small LoRA | 0.0780 | 0.3369 | 119.1 | 123.8 | 1.19 | 294,912 |
+| CodeT5-small LoRA (r8) | 0.0780 | 0.3369 | 119.1 | 123.8 | 1.19 | 294,912 |
+| CodeT5-small LoRA (r16) † | 0.1066 | 0.3607 | 140.8 | 145.8 | 4.74 | 1,179,648 |
+
+† Extra run, evaluated separately with `evaluate_model --lora-adapter ...` (`checkpoints/codet5_summarizer_lora_r16/metrics_validation.json`): same split, 1,384 examples, same generation settings. It is not yet a row of the `--compare` output files.
 
 Test split: **TBD** (one time, at the very end).
 
-More numbers for the two CodeT5 models:
+More numbers for the CodeT5 models:
 
-| | Full FT | LoRA (r=8, q,v) |
-|---|---|---|
-| Exact match | 0.0549 | 0.0195 |
-| Mean words, prediction / reference | 6.42 / 9.27 | 5.96 / 9.27 |
-| Brevity penalty | 0.6414 | 0.5735 |
-| Learning rate | 1e-4 | 2e-4 |
-| Best epoch (epochs run) | 4 (6, early stop) | 8 (8, schedule end) |
-| Best validation loss | 2.5604 | 2.8336 |
-| Training time | 37.7 min | 43.0 min |
-| Mean seconds per step | 0.436 | 0.360 |
-| Trainable / total parameters | 60,492,288 (full) | 294,912 of 60,787,200 (0.49%) |
+| | Full FT | LoRA r8 | LoRA r16 |
+|---|---|---|---|
+| LoRA rank / alpha / targets | – | 8 / 16 / q,v | 16 / 16 / q,k,v,o |
+| Exact match | 0.0549 | 0.0195 | 0.0412 |
+| Mean words, prediction / reference | 6.42 / 9.27 | 5.96 / 9.27 | 6.19 / 9.27 |
+| Brevity penalty | 0.6414 | 0.5735 | 0.6082 |
+| Learning rate | 1e-4 | 2e-4 | 5e-4 |
+| Best epoch (epochs run) | 4 (6, early stop) | 8 (8, schedule end) | 11 (12, schedule end) |
+| Best validation loss | 2.5604 | 2.8336 | 2.6972 |
+| Training time | 37.7 min | 43.0 min | 58.6 min |
+| Mean seconds per step | 0.436 | 0.360 | 0.326 |
+| Trainable / total parameters | 60,492,288 (full) | 294,912 of 60,787,200 (0.49%) | 1,179,648 of 61,671,936 (1.91%) |
+| Adapter size | – | 1.19 MB | 4.74 MB |
 
-Both runs: Apple M4 (MPS), fp32, 6,524 train / 1,384 validation examples, batch 8, seed 42, `test_split_used: false`. LoRA epochs took 4.2–8.6 minutes each (varying); full FT 6.3 minutes each. Latency: batch 1, 100 examples, warmed up; the LoRA adapter was not merged for this measurement (merged latency: not measured). The LoRA latency medians of two separate runs were 119.1 and 119.8 ms, so differences of a few ms are noise.
+All runs: Apple M4 (MPS), fp32, 6,524 train / 1,384 validation examples, batch 8, seed 42, `test_split_used: false`. LoRA epochs took 4.2–8.6 minutes each (varying); full FT 6.3 minutes each. Latency: batch 1, 100 examples, warmed up; the LoRA adapter was not merged for this measurement (merged latency: not measured). The r8 latency medians of two separate runs were 119.1 and 119.8 ms, so differences of a few ms are noise. The r16 median (140.8 ms) is about 20 ms higher, possibly because it has more adapter layers that are applied unmerged; this was not checked.
 
 ### Training curves (validation loss)
 
@@ -60,7 +66,9 @@ Both runs: Apple M4 (MPS), fp32, 6,524 train / 1,384 validation examples, batch 
 | Full FT | 2.7385 | 2.6171 | 2.5785 | **2.5604** | 2.5973 | 2.6248 | – | – |
 | LoRA | 2.9466 | 2.9008 | 2.8787 | 2.8636 | 2.8486 | 2.8423 | 2.8365 | **2.8336** |
 
-Full FT starts to overfit after epoch 4 (train loss keeps falling, validation loss rises). LoRA's validation loss was still falling slowly at epoch 8 (about 0.003 per epoch), but the learning rate also decays linearly to zero at epoch 8, so part of the flattening is the schedule.
+Full FT starts to overfit after epoch 4 (train loss keeps falling, validation loss rises). LoRA r8's validation loss was still falling slowly at epoch 8 (about 0.003 per epoch), but the learning rate also decays linearly to zero at epoch 8, so part of the flattening is the schedule.
+
+LoRA r16 (validation loss per epoch 1–12): 2.8851, 2.8221, 2.7915, 2.7521, 2.7204, 2.7265, 2.7115, 2.7131, 2.7058, 2.7063, **2.6972** (epoch 11), 2.7030. It flattens after epoch 5 and the last epoch is slightly worse than epoch 11, while train loss keeps falling (3.843 to 2.486). Early stopping did not trigger (patience 2). The best r16 loss (2.6972) is 0.1364 below r8 but still 0.1368 above full FT.
 
 ### Generation settings (full FT)
 
@@ -81,8 +89,10 @@ Compared on validation only, with the selection rule fixed beforehand (`generati
 - **Full FT is the best CodeT5 model here:** it beats LoRA on every quality number (BLEU-4 0.1390 vs 0.0780, ROUGE-L 0.3796 vs 0.3369, validation loss 2.560 vs 2.834) and has the best ROUGE-L of all five methods.
 - **By BLEU-4 the retrieval baselines are ahead of both models:** TF-IDF 0.1934 and BM25 0.1804 against 0.1390. By ROUGE-L they are behind full FT (0.3270 and 0.3236 against 0.3796) but only slightly below LoRA (0.3369). So the ranking depends on the metric. Plausible reasons (not tested): retrieval returns real docstrings, which match 4-grams exactly when train and validation contain similar or templated functions (the split is by `source_id`, not by repository); the generative models write shorter text (6.4 and 6.0 words against 9.3 in the references), which lowers corpus BLEU through the brevity penalty (0.64 and 0.57). The length of the retrieval outputs was not measured here.
 - **AST template** is far below everything else (BLEU-4 0.0068, ROUGE-L 0.2221), as expected for a fixed sentence.
-- **LoRA trades quality for size:** 1.19 MB against 245.12 MB (about 200 times smaller) and 0.49% of the parameters, at a cost of 0.0610 BLEU-4 and 0.0427 ROUGE-L. Latency is the same within noise (112.2 vs 119.1 ms median, unmerged adapter), and training time was not shorter in this run (43.0 vs 37.7 min, mostly because LoRA ran all 8 epochs).
-- **LoRA may be undertrained:** its best epoch was the last one. One extra run with more capacity and epochs would show whether the gap is real (see the command in the notes at the end of this file). Until then, the LoRA numbers are a lower bound for this method.
+- **LoRA trades quality for size.** r8: 1.19 MB against 245.12 MB (about 200 times smaller) and 0.49% of the parameters, at a cost of 0.0610 BLEU-4 and 0.0427 ROUGE-L against full FT. Latency is the same within noise (112.2 vs 119.1 ms median, unmerged adapter); training time was not shorter in these runs (43.0 and 58.6 vs 37.7 min, partly because LoRA ran all its epochs).
+- **The r8 LoRA was undertrained or too small; r16 closes part of the gap.** The extra run (r16, q/k/v/o, lr 5e-4, 12 epochs) improved on r8 in every quality number: BLEU-4 0.1066 vs 0.0780, ROUGE-L 0.3607 vs 0.3369, validation loss 2.6972 vs 2.8336. It is still below full FT (BLEU-4 −0.0324, ROUGE-L −0.0189, validation loss +0.1368) at 4.74 MB (about 52 times smaller than full FT, 1.91% trainable parameters). The r16 ROUGE-L is above both retrieval baselines (0.3270, 0.3236); its BLEU-4 is still well below theirs (0.1934, 0.1804).
+- **The r8/r16 comparison is not controlled.** Five things changed at once: rank (8 to 16), target modules (q,v to q,k,v,o), learning rate (2e-4 to 5e-4), maximum epochs (8 to 12), and alpha stayed 16 so the LoRA scaling alpha/r dropped from 2 to 1. The result shows that LoRA has headroom; it does not say which change helped. The r16 loss flattens from epoch 5 on, so more epochs alone are not the likely cause (not tested).
+- **Final LoRA candidate (chosen on validation only): r16.** It is better than r8 on all validation metrics. Full FT remains the most accurate model, so it stays the default for `summarize()` (auto backend); r16 is the option when a small artifact matters.
 - The differences come from a single run with one seed; no confidence intervals were computed.
 
 ## Error analysis
@@ -134,6 +144,7 @@ Examples from the full-FT review show the same patterns, e.g. "Get state and exi
 - The split is by `source_id`, not by repository. Functions from the same repository, templated docstrings and near-duplicates can appear on both sides, which favors retrieval baselines and fine-tuned models.
 - CodeT5 was pre-trained on CodeSearchNet, so the base model may have seen validation and test functions or their docstrings. Gains from fine-tuning cannot be separated from this overlap.
 - Identical summaries for different functions are kept on purpose (not treated as duplicates).
+- LoRA r16 was found by one extra run with five changed settings and chosen on validation; other ranks, learning rates or scalings were not tried, so LoRA may still be under-tuned. Its validation scores come from a separate evaluation call, not from the `--compare` output files.
 - Latency was measured on one machine (Apple M4, MPS) and is not representative for other hardware.
 - Test split: not evaluated. One final run is planned after all choices are fixed (`--split test --confirm-final-test`).
 
@@ -144,4 +155,5 @@ See the "Code summarization" section of the README.
 ## Notes for the report
 
 - Not added (would need new dependencies): METEOR, BERTScore/CodeBERTScore, a human rating of a sample.
-- Optional extra LoRA run (not done): `python -m src.summarization.train_codet5_lora --lora-r 16 --lora-targets qkvo --lr 5e-4 --epochs 12 --output checkpoints/codet5_summarizer_lora_r16`.
+- Extra LoRA run (done): `python -m src.summarization.train_codet5_lora --lora-r 16 --lora-targets qkvo --lr 5e-4 --epochs 12 --output checkpoints/codet5_summarizer_lora_r16`.
+- To use the r16 adapter in `summarize()`: `--checkpoint checkpoints/codet5_summarizer_lora_r16/best` (the `lora` backend default still points to the r8 folder).
