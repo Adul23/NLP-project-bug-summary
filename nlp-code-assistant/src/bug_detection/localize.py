@@ -11,6 +11,7 @@ import ast
 import dataclasses
 import io
 import tokenize
+import warnings
 
 from src.data.mutations import (
     ARITHMETIC,
@@ -35,9 +36,16 @@ def _changed_line(old: str, new: str) -> int:
     raise ValueError("candidate does not change the code")
 
 
+def _parse(code: str) -> ast.AST:
+    # User code may contain invalid escape sequences; ast would warn about each one.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", SyntaxWarning)
+        return ast.parse(code)
+
+
 def repair_candidates(code: str) -> list[dict]:
     """Every single-operator repair of `code` that still parses."""
-    tree = ast.parse(code)
+    tree = _parse(code)
     visitor = _BodyVisitor()
     visitor.visit(tree)
     tokens = list(tokenize.generate_tokens(io.StringIO(code).readline))
@@ -51,7 +59,7 @@ def repair_candidates(code: str) -> list[dict]:
                 if fixed is None or fixed == code:
                     continue
                 try:
-                    ast.parse(fixed)
+                    _parse(fixed)
                 except SyntaxError:
                     continue
                 candidates.append(

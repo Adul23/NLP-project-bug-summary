@@ -228,6 +228,14 @@ transformer base weights must already be in the local cache or at the saved path
   `suggested_fix`, `explanation_source`, and `verified`. With `"summarize": true` it also
   returns `summary` and `summary_source` (`"codet5_finetuned"`, or `null` and
   `"unavailable"` if the summarizer cannot run; the analysis itself still succeeds).
+  Without `original_code`, in the default `"deterministic"` mode and with
+  `bug_probability >= 0.40`, the response carries the top localization repair (see
+  [Bug localization](#bug-localization)): `explanation_source: "operator_flip"`,
+  `verified: false`, `explanation` like ``"Line 2: `<` may be `>`"``, `bug_type` (the
+  mutation type), `suspected_line`, `suggested_fix` (the whole function with that operator
+  flipped) and `repair_candidates` (up to 3: `line`, `old`, `new`, `mutation_type`, `drop`).
+  Only repairs that lower the bug probability are returned; if none does, or the code does
+  not parse, the explanation stays `"unavailable"`. The UI highlights `suspected_line`.
 - `POST /summarize`: `{"code": "..."}` (same code limits, no `model` field). Returns
   `{"summary", "summary_source": "codet5_finetuned", "model": "codet5_summarizer"}`;
   503 if the model is missing or fails.
@@ -239,7 +247,8 @@ for `def add(a, b): return a - b` it still says "Add two elements". Early spot c
 were mixed: `def add(a, b): return a + b` gave "Add a new value to a list", while
 `is_adult`, `read_json` and `factorial` got reasonable summaries. Treat summaries as hints.
 
-Without an original or trained summarizer, explanation/type/fix are null. A verified
+Without an original, a localization repair or a trained summarizer, explanation/type/fix
+are null. An operator-flip repair is the model's guess, not a verified change. A verified
 pair can provide evidence even if the classifier predicts CLEAN; the classifier
 label is not silently replaced. Verification proves a supported code difference,
 not semantic incorrectness or the trustworthiness of a user-supplied original.
@@ -249,7 +258,8 @@ suggested fix. Classifier confidence is not explanation confidence or calibratio
 Requests have a 20,000-character code limit (also for originals) and 128,000-byte
 body limit, including streamed bodies. Blank/non-string inputs and unknown models
 return 422; missing model artifacts/dependencies return 503; oversized bodies return
-413. No `eval`, `exec`, subprocess execution of source, or precise repair guessing.
+413. No `eval`, `exec`, or subprocess execution of source; repairs are found by parsing
+and re-scoring, never by running the code.
 
 The API also collects feedback for retraining:
 
@@ -362,8 +372,9 @@ seed-42 model of the new configuration):
 
 When CodeBERT flags a function as BUGGY (529 of 711), its first candidate is the exact fix
 86.2% of the time. The true fix is always among the candidates here because the bugs come from
-the same mutation tables; `<=` and `>=` never get candidates. Method, per-type results and
-limitations: `docs/bug-localization-results.md`.
+the same mutation tables; `<=` and `>=` never get candidates. `/analyze` returns the top
+repair as an unverified explanation when no original code is given (see API above). Method,
+per-type results and limitations: `docs/bug-localization-results.md`.
 
 ## Metrics
 

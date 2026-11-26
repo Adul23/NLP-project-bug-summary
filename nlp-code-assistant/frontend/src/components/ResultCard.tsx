@@ -1,4 +1,4 @@
-import type { AnalysisResponse } from "../types";
+import type { AnalysisResponse, RepairCandidate } from "../types";
 import { humanize, modelLabel } from "../lib/format";
 import { FeedbackRow } from "./FeedbackRow";
 import { AlertIcon, CheckIcon } from "./icons";
@@ -78,6 +78,13 @@ function SourceChip({ source }: { source: AnalysisResponse["explanation_source"]
       </span>
     );
   }
+  if (source === "operator_flip") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-0.5 text-xs font-medium text-warn">
+        <AlertIcon width={12} height={12} /> Not verified
+      </span>
+    );
+  }
   if (source === "lora_generated_unverified") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-0.5 text-xs font-medium text-warn">
@@ -101,6 +108,18 @@ function SummarySection({ result }: { result: AnalysisResponse }) {
         <p className="text-sm text-muted">Summary unavailable: the CodeT5 summarizer could not run.</p>
       )}
     </div>
+  );
+}
+
+function PossibleFix({ candidate }: { candidate: RepairCandidate }) {
+  return (
+    <p data-testid="possible-fix" className="text-sm">
+      <span className="font-medium">Possible fix:</span> line {candidate.line},{" "}
+      <code className="font-mono">{candidate.old}</code> → <code className="font-mono">{candidate.new}</code>{" "}
+      <span className="text-xs text-muted">
+        (not verified: the operator whose flip lowers the bug probability most)
+      </span>
+    </p>
   );
 }
 
@@ -150,6 +169,10 @@ function ResultBody({ run, stale, error }: { run: AnalysisRun; stale: boolean; e
           </p>
         )}
       </div>
+
+      {result.explanation_source === "operator_flip" && result.repair_candidates?.[0] && (
+        <PossibleFix candidate={result.repair_candidates[0]} />
+      )}
 
       {result.suggested_fix && (
         <div>

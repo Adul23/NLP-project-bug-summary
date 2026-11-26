@@ -42,8 +42,18 @@ export interface SummaryResponse {
 
 export type ExplanationSource =
   | "verified_code_pair"
+  | "operator_flip"
   | "lora_generated_unverified"
   | "unavailable";
+
+/** One operator-flip repair, ranked by how much it lowers the bug probability. */
+export interface RepairCandidate {
+  line: number;
+  old: string;
+  new: string;
+  mutation_type: string;
+  drop: number;
+}
 
 export interface AnalysisResponse {
   label: Label;
@@ -56,6 +66,9 @@ export interface AnalysisResponse {
   suggested_fix: string | null;
   explanation_source: ExplanationSource;
   verified: boolean;
+  /** Present only with explanation_source "operator_flip" (no original code given). */
+  suspected_line?: number;
+  repair_candidates?: RepairCandidate[];
   /** Present only when the request had summarize=true; null if the summarizer could not run. */
   summary?: string | null;
   summary_source?: SummarySource;

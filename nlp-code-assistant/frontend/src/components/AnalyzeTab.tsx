@@ -59,7 +59,7 @@ export function AnalyzeTab({ health, active, onAnalyzed }: Props) {
   const overLimit = code.length > MAX_CODE_CHARS || original.length > MAX_CODE_CHARS;
   const canSubmit = !loading && code.trim().length > 0 && !overLimit;
   const stale = run !== null && run.code !== code;
-  const highlight = run && !stale ? mentionedLine(run.result.explanation) : null;
+  const highlight = run && !stale ? (run.result.suspected_line ?? mentionedLine(run.result.explanation)) : null;
 
   const analyze = useCallback(async () => {
     if (!canSubmit) return;

@@ -113,7 +113,10 @@ def test_api_prediction_and_evidence(api):
     )
     assert api.get("/health").json()["models"]["tfidf"]["status"] == "loaded"
     plain = api.post("/analyze", json={"code": code}).json()
-    assert plain["bug_type"] is plain["explanation"] is plain["suggested_fix"] is None
+    # No original: the localization guess, never marked verified.
+    assert plain["explanation_source"] == "operator_flip" and not plain["verified"]
+    assert plain["suggested_fix"] == "def f(x): return x + 1"
+    assert plain["suspected_line"] == 1
     paired = api.post(
         "/analyze", json={"code": code, "original_code": "def f(x): return x + 1"}
     ).json()

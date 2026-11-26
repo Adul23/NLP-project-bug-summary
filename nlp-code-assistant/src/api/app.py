@@ -3,6 +3,7 @@
 import json
 import os
 import threading
+import tokenize
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.bug_detection import retrain_from_feedback
+from src.bug_detection.localize import localize
 from src.bug_detection.split_dataset import ROOT
 from src.inference.models import CodeSummarizer, LoraPredictor, TfidfPredictor
 from src.summarization.prepare import verified_change
@@ -109,6 +111,40 @@ class RetrainRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     epochs: int = Field(default=3, ge=1, le=10)
     mistakes_only: bool = False
+
+
+def localized_explanation(code: str, predictor) -> dict:
+    """Unverified explanation from operator-flip localization (no reference code).
+
+    The first candidate counts only if flipping it lowers the bug probability; code
+    that does not parse gets no explanation instead of an error.
+    """
+    try:
+        found = localize(code, predictor)
+    except (SyntaxError, ValueError, tokenize.TokenError):
+        return {}
+    candidates = [c for c in found["candidates"] if c["drop"] > 0]
+    if not candidates:
+        return {}
+    best = candidates[0]
+    return {
+        "bug_type": best["mutation_type"],
+        "explanation": f"Line {best['line']}: `{best['old']}` may be `{best['new']}`",
+        "suggested_fix": best["code"],
+        "suspected_line": best["line"],
+        "explanation_source": "operator_flip",
+        "verified": False,
+        "repair_candidates": [
+            {
+                "line": c["line"],
+                "old": c["old"],
+                "new": c["new"],
+                "mutation_type": c["mutation_type"],
+                "drop": round(float(c["drop"]), 4),
+            }
+            for c in candidates
+        ],
+    }
 
 
 def create_app(model_root=None, feedback_dir=None):
@@ -239,7 +275,8 @@ def create_app(model_root=None, feedback_dir=None):
                 change = verified_change(request.original_code, request.code)
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from exc
-        prediction = load(request.model).predict(request.code)
+        predictor = load(request.model)
+        prediction = predictor.predict(request.code)
         log_if_uncertain(request.code, request.model, prediction)
         result = {
             **prediction,
@@ -259,6 +296,8 @@ def create_app(model_root=None, feedback_dir=None):
             )
         elif request.explanation == "lora":
             result.update(load("summarizer").generate(request.code))
+        elif prediction["bug_probability"] >= UNCERTAINTY_LOW:
+            result.update(localized_explanation(request.code, predictor))
         if request.summarize:
             # The summary is optional extra context: never fail the analysis over it.
             try:

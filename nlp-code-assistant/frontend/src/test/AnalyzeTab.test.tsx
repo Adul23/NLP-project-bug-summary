@@ -41,4 +41,36 @@ describe("AnalyzeTab", () => {
     expect(alert).toHaveTextContent("Model not available");
     expect(alert.textContent).not.toContain("detail");
   });
+
+  it("highlights the suspected line from an operator-flip result", async () => {
+    const result = {
+      label: "BUGGY",
+      bug_probability: 0.9,
+      confidence: 0.9,
+      model: "tfidf",
+      is_buggy: true,
+      bug_type: "comparison_operator",
+      explanation: "Possibly a flipped comparison",
+      suggested_fix: "def f():\n    pass\n",
+      explanation_source: "operator_flip",
+      verified: false,
+      suspected_line: 3,
+      repair_candidates: [{ line: 3, old: "<", new: ">", mutation_type: "comparison_operator", drop: 0.5 }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify(result), { status: 200 })),
+    );
+    render(
+      <ToastProvider>
+        <AnalyzeTab health={health} active />
+      </ToastProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Load example" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clean helper" }));
+    await userEvent.click(screen.getByRole("button", { name: "Analyze" }));
+
+    // suspected_line wins even though the explanation text names no line
+    expect(await screen.findByText("Line 3 highlighted from the explanation")).toBeInTheDocument();
+  });
 });

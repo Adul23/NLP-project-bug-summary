@@ -48,14 +48,22 @@ Optional line: *When CodeBERT flags a function as buggy, its first repair is the
 
 ## 4. Product / API
 
-Current state (to be updated after the localization is wired into `/analyze`):
+Replace the API slide text with:
 
-> **`POST /analyze`**: BUGGY/CLEAN label and bug probability from TF-IDF or CodeBERT.
-> With the original code: a **verified** explanation of the exact operator change (line,
-> type). Optional `summarize: true` adds a one-sentence CodeT5 summary.
+> **`POST /analyze`**: BUGGY/CLEAN label and bug probability from TF-IDF or CodeBERT, plus an
+> explanation:
+> - with the original code: a **verified** explanation of the exact operator change;
+> - without it (bug probability ≥ 0.40): the **suspected line and fix** from localization,
+>   e.g. *"Line 2: `<` may be `>`"*, marked **not verified**; the UI highlights the line.
+>
+> Optional `summarize: true` adds a one-sentence CodeT5 summary.
 > **`POST /summarize`**: one-sentence summary from the fully fine-tuned CodeT5-small.
 > **Feedback loop**: users mark predictions right/wrong; CodeBERT retrains on feedback
 > in the background and is swapped in only if validation F1 drops by at most 0.01.
+
+Speaker note: the localized fix is shown only if flipping that operator lowers the bug
+probability; on the test mutants the first repair is the exact fix 78.2% of the time
+(86.2% when CodeBERT flags the function).
 
 Not in the product yet (do not claim): generated explanations from the CodeT5 LoRA
 "explainer" (it is not trained; `explanation: "lora"` returns 503).
