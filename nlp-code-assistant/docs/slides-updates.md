@@ -1,0 +1,74 @@
+# Slide updates
+
+Ready-to-paste texts for the presentation (the deck is not in this repository). Each block
+says what it replaces. Sources: `results/codebert_seeds.md`, `docs/bug-localization-results.md`,
+`docs/summarization-results.md`, `results/evaluation_report.md`.
+
+## 1. Classification results
+
+Replace "CodeBERT + LoRA: F1 0.754" with:
+
+> **CodeBERT + LoRA: BUGGY F1 0.764 ± 0.007 (3 seeds)**, accuracy 0.848 ± 0.007
+> TF-IDF + LR: BUGGY F1 0.585 (one deterministic model)
+
+Optional seed table:
+
+| Seed | F1 | Accuracy | Precision | Recall |
+|---|---:|---:|---:|---:|
+| 42 | 0.756 | 0.845 | 0.768 | 0.744 |
+| 13 | 0.767 | 0.843 | 0.731 | 0.807 |
+| 7 | 0.768 | 0.857 | 0.800 | 0.738 |
+| Mean ± std | 0.764 ± 0.007 | 0.848 ± 0.007 | 0.766 ± 0.035 | 0.763 ± 0.038 |
+
+Speaker note: the old single run (F1 0.754) is inside the seed spread, so the new training
+setup did not change quality. Precision and recall vary more between seeds than F1.
+
+## 2. Training
+
+Replace the old training line ("batch 1, fp32, 66 minutes") with:
+
+> **11 minutes per run on a Colab T4** (was 66): batch 16, fp16 mixed precision,
+> length-grouped batches, 5 epochs with early stopping. **6× faster, same F1.**
+
+## 3. New slide: bug localization
+
+Title: **Where is the bug? Localization without reference code**
+
+> For each operator, try the operators it could have been mutated from, score all
+> candidates in one batch, and pick the one that lowers the bug probability the most.
+
+| 711 test mutants | CodeBERT | TF-IDF | Random |
+|---|---:|---:|---:|
+| Exact fix ranked 1st | **78.2%** | 67.8% | 48.8% |
+| Exact fix in top 3 | **92.3%** | 86.9% | 78.6% |
+| Correct line ranked 1st | **86.2%** | 78.1% | — |
+
+Optional line: *When CodeBERT flags a function as buggy, its first repair is the exact fix
+86.2% of the time (correct line 90.7%).*
+
+## 4. Product / API
+
+Current state (to be updated after the localization is wired into `/analyze`):
+
+> **`POST /analyze`**: BUGGY/CLEAN label and bug probability from TF-IDF or CodeBERT.
+> With the original code: a **verified** explanation of the exact operator change (line,
+> type). Optional `summarize: true` adds a one-sentence CodeT5 summary.
+> **`POST /summarize`**: one-sentence summary from the fully fine-tuned CodeT5-small.
+> **Feedback loop**: users mark predictions right/wrong; CodeBERT retrains on feedback
+> in the background and is swapped in only if validation F1 drops by at most 0.01.
+
+Not in the product yet (do not claim): generated explanations from the CodeT5 LoRA
+"explainer" (it is not trained; `explanation: "lora"` returns 503).
+
+## 5. Limitations
+
+Remove: "one seed".
+
+Add:
+
+> - Bugs are synthetic single-operator mutations; performance on real bugs is not measured yet.
+> - CodeBERT and CodeT5 were pretrained on CodeSearchNet and may have seen the test functions.
+> - Latencies were measured on different hardware (CodeBERT and TF-IDF on a laptop CPU,
+>   CodeT5 on an Apple M4) and are not directly comparable.
+> - Localization only proposes operators from the mutation tables; `<=` and `>=` never get a
+>   candidate.

@@ -4,14 +4,23 @@ This project reuses the CodeSearchNet preprocessing and operator-mutation pipeli
 and adds two classification paths, evidence-based explanations, optional LoRA
 summarization, and a small FastAPI backend. Source code is never executed.
 
-**Current status (2026-11-16):** TF-IDF trained on the complete local dataset;
-verified synthetic explanation data prepared; API tested with real TF-IDF artifacts.
-**The CodeBERT + LoRA classifier is fine-tuned** (3 epochs, 3,870 steps, about 66 minutes
-on a CUDA GPU) and measured on the shared split: test BUGGY F1 **0.7538**, accuracy
-**0.8449**. **A fully fine-tuned CodeT5-small summarizer exists** (`models/codet5_summarizer`,
-from `src/summarization/train_codet5.py`) and is served as the one-sentence "Summary" feature;
-its summary quality has not been measured. **The CodeT5 LoRA explainer
-(`models/codet5_lora`) is still untrained**, so `"explanation": "lora"` stays unavailable.
+**Current status (2026-11-26):**
+
+- **Bug detection.** TF-IDF + LR (test BUGGY F1 0.585) and CodeBERT + LoRA are trained on the
+  shared `stratified_v1` split. CodeBERT + LoRA reaches test BUGGY F1 **0.764 ± 0.007** over
+  three seeds (42, 13, 7), training in about 11 minutes per run on a Colab T4
+  (`results/codebert_seeds.md`).
+- **Bug localization.** Without reference code, ranking single-operator repairs by the drop in
+  bug probability finds the exact fix first for **78.2%** of test mutants with CodeBERT (67.8%
+  TF-IDF, 48.8% random); see "Bug localization" below.
+- **Code summarization.** CodeT5-small is fully fine-tuned and LoRA-tuned (r8, r16); the final
+  test scores are in "Code summarization" below and `docs/summarization-results.md`. The full
+  fine-tune serves `/summarize`. The separate CodeT5 LoRA *bug explainer*
+  (`models/codet5_lora`) is not trained, so `"explanation": "lora"` returns 503.
+- **Product.** FastAPI backend and React frontend; feedback-driven CodeBERT retraining runs as
+  a background job.
+
+All bugs are synthetic single-operator mutations; results on real bugs are not measured yet.
 
 ## Setup and CPU baseline
 
@@ -114,14 +123,27 @@ Install the optional dependencies only to train/use adapters:
 python -m pip install 'torch>=2.6,<2.7' --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -r requirements-transformers.txt
 export HF_HOME="$PWD/.cache/huggingface"
-python -m src.bug_detection.train_lora --device cpu --batch-size 1 --accumulation 8 --gradient-checkpointing
-python -m src.summarization.train_lora --device cpu --batch-size 1 --accumulation 8 --gradient-checkpointing
 ```
 
-For GPU training use a CUDA torch build and `--device cuda`. `--device auto` is the
-default. BF16 is enabled only on supporting CUDA hardware; otherwise FP32 is used.
-No FP16 is enabled on CPU. Start at 512 tokens, use dynamic padding and gradient
-accumulation, and lower `--max-length` only as a separately documented experiment.
+Train CodeBERT + LoRA on a GPU. The recommended run on a Colab T4 takes about 11 minutes
+(the old setting, batch 1 with 8-step accumulation in fp32 for 3 epochs, took 66 minutes):
+
+```bash
+python -m src.bug_detection.train_lora --device cuda --batch-size 16 --eval-batch-size 64 \
+    --precision fp16 --epochs 5 --seed 42 --output models/codebert_lora_seed42
+```
+
+`--precision auto` (the default) picks bf16 on GPUs with native bf16, fp16 on other CUDA
+GPUs (the T4 has no bf16) and fp32 on CPU; TF32 matmuls are enabled on Ampere and newer.
+Batches are grouped by length to reduce padding, padded to a multiple of 8 under mixed
+precision, and the learning rate (2e-4) uses a 6% linear warm-up. Training on CPU is
+possible but slow (`--device cpu --batch-size 1 --accumulation 8 --gradient-checkpointing`).
+Optional flags, off by default so runs stay comparable: `--class-weights`,
+`--lora-targets {qv,qkv,all-linear}`, `--lora-r`, `--threshold-tune`. Each run records its
+wall-clock time, throughput and peak GPU memory in `training_config.json` (`runtime`).
+`scripts/bench_training.py` compares the old and new settings for 50 steps on a tiny
+fixture. Start at 512 tokens and lower `--max-length` only as a separately documented
+experiment.
 CUDA out-of-memory errors include reduction options. Long functions are truncated;
 the classifier records truncation fractions and the changed token can be lost.
 
@@ -131,7 +153,7 @@ for RoBERTa architecture, discovers attention `query`/`value` linear layers, use
 `classifier` head. Validation BUGGY F1 selects the checkpoint; patience is 2 epochs.
 CodeT5 uses T5 attention `q`/`v` layers and `TaskType.SEQ_2_SEQ_LM`; validation loss
 selects its checkpoint. Both save adapter/tokenizer, training metadata, base model
-revision, and metrics. Seeds are 42; different devices may still differ numerically.
+revision, and metrics. The seed defaults to 42 (`--seed`); different devices may still differ numerically.
 Use `--revision <commit>` to pin a model download; the resolved revision is recorded.
 
 Classification predicts a label, while summarization generates tokens. They are
@@ -176,7 +198,8 @@ human-review fields. Rate correctness and specificity 0 (wrong/absent), 1 (parti
 2 (supported and precise), and mark unsupported claims true/false. Inspect against
 both original and mutated functions, including operator and line. Report counts,
 rater agreement and examples; do not fill ratings automatically. No human quality
-scores or trained pretrained summarizer are claimed in this checkout.
+scores are claimed, and this LoRA explainer is not trained in this checkout (the separate
+summarizer in "Code summarization" is).
 
 ## Inference and API
 
@@ -233,8 +256,13 @@ The API also collects feedback for retraining:
 - `GET /feedback`: counts of user feedback, mistakes and uncertain cases, plus the five most recent feedback rows.
 - `POST /feedback`: `{"code", "model", "predicted_label", "actual_label"}` with optional
   `user_explanation` and `fixed_code`. Saved to `data/feedback/user_feedback.jsonl`.
-- `POST /feedback/retrain`: `{"epochs": 1-10, "mistakes_only": bool}`. Fine-tunes the CodeBERT
-  adapter on feedback into `models/codebert_lora_v2` and hot-swaps it. Synchronous; can take minutes.
+- `POST /feedback/retrain`: `{"epochs": 1-10, "mistakes_only": bool}` starts a background job
+  and returns 202 with a `job_id` (409 if a job is already running). The job fine-tunes the
+  active CodeBERT adapter on feedback mixed with replayed training rows, writes it to a new
+  `models/codebert_lora_v{N}_{timestamp}` folder, and swaps it in only if validation BUGGY F1
+  drops by at most 0.01 (`models/codebert_lora_active.json` records the active adapter).
+- `GET /feedback/retrain/{job_id}`: job status (`queued`, `running`, `done`, `rejected`,
+  `failed`), progress (phase, epoch, loss) and old/new validation metrics.
 
 Predictions with bug probability from 0.40 to 0.60 are logged to
 `data/feedback/uncertain_cases.jsonl`. `BUG_FEEDBACK_DIR` changes the feedback directory.
@@ -279,7 +307,14 @@ comparable to the historical sublinear-TF run below or the student notebook.
 | Model | BUGGY precision | BUGGY recall | BUGGY F1 | Accuracy | Inference latency |
 |---|---:|---:|---:|---:|---|
 | TF-IDF + LR | 0.5167 | 0.6751 | 0.5854 | 0.6924 | 1.47 ms median |
-| CodeBERT + LoRA | 0.7698 | 0.7384 | 0.7538 | 0.8449 | 244 ms median |
+| CodeBERT + LoRA, 3 seeds (mean ± std) | 0.766 ± 0.035 | 0.763 ± 0.038 | **0.764 ± 0.007** | 0.848 ± 0.007 | not re-measured |
+| CodeBERT + LoRA, old single run | 0.7698 | 0.7384 | 0.7538 | 0.8449 | 244 ms median |
+
+The three-seed rows use the new training configuration (batch 16, fp16 on a Colab T4,
+5 epochs, about 11 minutes per run); per-seed results are in `results/codebert_seeds.md`.
+The old single run (seed 42, batch 1 with 8-step accumulation, fp32, 3 epochs, 66 minutes)
+is inside the seed spread, so the new configuration keeps quality and trains about 6 times
+faster. The latency and the details below refer to the old run (`models/codebert_lora`).
 
 Latency: 30 validation functions, warm CPU, batch 1, includes vectorization and
 prediction, excludes loading. Adapter-only size is not total model size: the TF-IDF
@@ -309,6 +344,26 @@ Test mutation recall: comparison 214/303 = 0.7063; arithmetic 194/277 = 0.7004;
 boolean 72/131 = 0.5496. Comparison was easiest and boolean hardest in this run.
 See `results/model_comparison.json`, `results/tfidf_v2_metrics.json` and
 `models/codebert_lora/metrics.json` for measured values, provenance and per-class reports. Models and generated data remain ignored.
+
+## Bug localization
+
+The classifier says whether a function looks buggy; `src/bug_detection/localize.py` guesses
+where. For every operator it proposes the operators that could have been mutated into it (the
+mutation tables read backwards), scores the original and all candidates in one batch, and
+ranks candidates by how much they lower the bug probability. No reference code is needed.
+Evaluated on the 711 test mutants (`src/evaluation/localization_eval.py`; CodeBERT is the
+seed-42 model of the new configuration):
+
+| | CodeBERT | TF-IDF | Random choice |
+|---|---:|---:|---:|
+| Exact fix ranked first (top-1) | **78.2%** | 67.8% | 48.8% |
+| Exact fix in top 3 | **92.3%** | 86.9% | 78.6% |
+| Correct line ranked first | **86.2%** | 78.1% | — |
+
+When CodeBERT flags a function as BUGGY (529 of 711), its first candidate is the exact fix
+86.2% of the time. The true fix is always among the candidates here because the bugs come from
+the same mutation tables; `<=` and `>=` never get candidates. Method, per-type results and
+limitations: `docs/bug-localization-results.md`.
 
 ## Metrics
 
@@ -456,35 +511,42 @@ consistent with its `class_weight="balanced"` training.
 
 ### Measured: summarization
 
-Not measured yet: `data/processed/summarization_dataset.csv` is not in this checkout. With it in
-place, `python -m src.summarization.evaluate_summaries` scores CodeT5 and the AST, TF-IDF and BM25
-baselines on the same test rows and writes `results/summarization_metrics.json`,
-`results/summarization_test_predictions.csv` and the human-evaluation sheet.
+Summarization is evaluated in `docs/summarization-results.md` (validation for every choice,
+test scored once). Test split, 1,400 examples, from `results_summarization/comparison_test.md`:
+
+| Method | BLEU-4 | ROUGE-L F1 |
+|---|---:|---:|
+| AST template | 0.0079 | 0.2237 |
+| TF-IDF retrieval | 0.1840 | 0.3283 |
+| BM25 retrieval | 0.1770 | 0.3251 |
+| CodeT5-small full fine-tune | 0.1398 | **0.3862** |
+| CodeT5-small LoRA (r16) | 0.1066 | 0.3620 |
+
+`python -m src.summarization.evaluate_summaries` adds further metrics (ROUGE-1/2, chrF,
+bootstrap CIs) on the same data; it has not been run on the full test split yet.
 
 ## Tests and limitations
 
-Verified on 2026-10-11: **63 tests and 31 subtests passed**. `pip check` found no
-broken requirements. Three dependency/fixture warnings remain (Starlette's deprecated
-AnyIO portal alias and PEFT config warnings for two in-memory random model fixtures).
-A real Uvicorn localhost smoke test returned HTTP 200 for health, prediction and
-verified-pair analysis; its output is saved in `results/api_smoke.json`.
-The complete test log is `results/extended_pytest.log`.
-
 ```bash
-pytest -v
+OMP_NUM_THREADS=2 pytest -v                    # everything
+OMP_NUM_THREADS=2 pytest -v --ignore=tests/test_lora_local.py \
+    --ignore=tests/test_training_optimizations.py   # skip tiny transformer training runs
 python -m pip check
+cd frontend && npm test                        # frontend
 ```
 
 Transformer tests skip if optional dependencies are absent; with them installed,
-`tests/test_lora_local.py` performs real training, gradient checks, adapter/head
-save/reload and generation using tiny random local RoBERTa/T5 fixtures. Those
-fixture scores are not model comparison results. Training never starts at import.
+`tests/test_lora_local.py` and `tests/test_training_optimizations.py` train tiny random
+local RoBERTa/T5 fixtures (gradient checks, adapter save/reload, generation). Those fixture
+scores are not model comparison results. Training never starts at import. A real Uvicorn
+smoke test is saved in `results/api_smoke.json`.
 
-The TF-IDF baseline and the fine-tuned CodeBERT + LoRA classifier are functional. CodeT5
-summarizer fine-tuning and human explanation review remain outstanding. Synthetic operator replacements may
-not introduce a behavioral error; original code may already contain bugs. Dataset
-sampling, repository overlap, semantic clones and CodeSearchNet pretraining exposure
-limit generalization. See the original preparation documentation below.
+Limitations: the bugs are synthetic single-operator replacements, which may not change
+behaviour, and the "clean" originals may already contain bugs. Performance on real bugs is
+not measured. Dataset sampling, repository overlap and semantic clones limit generalization,
+and CodeBERT and CodeT5 were pretrained on CodeSearchNet, so they may have seen the test
+functions. Latencies were measured on different hardware (TF-IDF and CodeBERT on a laptop
+CPU, CodeT5 on an Apple M4) and are not directly comparable.
 
 ---
 
@@ -530,17 +592,17 @@ CLI: `python -m src.summarization.summarize --file f.py --backend {auto,full,lor
 
 ## Historical data preparation and baseline (2026-09-28)
 
-Конвейер собирает **10 000 уникальных Python-функций CodeSearchNet** и создаёт
-не более одной синтетической версии каждой функции. `label=0` — исходная
-функция, `label=1` — функция с одной заменой оператора. Метка `clean` означает
-исходный код: CodeSearchNet не гарантирует отсутствие реальных ошибок.
+The pipeline collects **10,000 unique CodeSearchNet Python functions** and creates at most
+one synthetic version of each. `label=0` is the original function, `label=1` the function
+with one operator replaced. `clean` means "the original code": CodeSearchNet does not
+guarantee that it is free of real bugs.
 
 Previous run: **10,000 clean + 4,743 buggy = 14,743 rows**.
 Current local run: **10,000 clean + 5,304 buggy = 15,304 rows**; see the baseline section below.
 
-## Запуск
+### Running
 
-Python **3.10+**. Из каталога `nlp-code-assistant`:
+Python **3.10+**, from `nlp-code-assistant/`:
 
 ```bash
 python3 -m venv .venv
@@ -551,129 +613,117 @@ python src/data/preprocess.py
 python src/data/build_dataset.py
 ```
 
-Первый шаг требует интернет. Остальные работают с локальными файлами.
-Пути по умолчанию вычисляются относительно проекта. Параметры доступны через
-`--help`. Для небольшого прогона укажите одинаковый `--target 100` в первых
-двух командах. `download_codesearchnet.py --input local.jsonl` принимает
-локальный JSONL с полем `code`; порядок такого файла сохраняется.
+Only the first step needs the internet; the rest work on local files. Default paths are
+resolved relative to the project and all options are listed by `--help`. For a small run,
+pass the same `--target 100` to the first two commands. `download_codesearchnet.py --input
+local.jsonl` accepts a local JSONL file with a `code` field and keeps its order.
 
-## Файлы
+### Files
 
-| Файл | Назначение |
+| File | Purpose |
 |---|---|
-| `src/data/download_codesearchnet.py` | Потоковое чтение до 10 000 принятых функций |
-| `src/data/preprocess.py` | Очистка, AST-проверка, дедупликация, `source_id` |
-| `src/data/mutations.py` | Одна мутация AST с сохранением оформления |
-| `src/data/build_dataset.py` | Сборка, проверки качества, статистика и примеры |
-| `src/bug_detection/split_dataset.py` | Разбиение 70/15/15 по `source_id` |
-| `src/bug_detection/train_tfidf.py` | Обучение, выбор конфигурации, оценка и сохранение моделей |
-| `src/bug_detection/predict_tfidf.py` | `predict_bug(code)` для нового Python-кода |
-| `data/raw/codesearchnet/python_functions.jsonl` | Обработанные исходные записи и происхождение |
-| `data/raw/codesearchnet/python_functions.manifest.json` | Ревизия, URL, seed, версии библиотек и счётчики |
+| `src/data/download_codesearchnet.py` | Streams up to 10,000 accepted functions |
+| `src/data/preprocess.py` | Cleaning, AST checks, de-duplication, `source_id` |
+| `src/data/mutations.py` | One AST mutation that keeps the original formatting |
+| `src/data/build_dataset.py` | Assembly, quality checks, statistics and examples |
+| `src/bug_detection/split_dataset.py` | 70/15/15 split by `source_id` |
+| `src/bug_detection/train_tfidf.py` | Training, configuration choice, evaluation and model saving |
+| `src/bug_detection/predict_tfidf.py` | `predict_bug(code)` for new Python code |
+| `data/raw/codesearchnet/python_functions.jsonl` | Processed source records and provenance |
+| `data/raw/codesearchnet/python_functions.manifest.json` | Revision, URL, seed, library versions and counters |
 | `data/processed/clean_functions.csv` | `source_id,code,label,mutation_type` |
 | `data/processed/bug_detection_dataset.csv` | `sample_id,source_id,code,label,mutation_type` |
-| `data/processed/*.stats.json` | Счётчики очистки и распределения классов/мутаций |
-| `data/processed/bug_detection_dataset.examples.txt` | По пять полных пар на категорию |
+| `data/processed/*.stats.json` | Cleaning counters and class/mutation distributions |
+| `data/processed/bug_detection_dataset.examples.txt` | Five full pairs per category |
 
-Данные, модели, кэш и виртуальное окружение исключены через `.gitignore`.
-The TF-IDF + Logistic Regression baseline is implemented; other models and the app remain placeholders.
+Data, models, caches and the virtual environment are excluded by `.gitignore`.
 
-## Источник и воспроизводимость
+### Source and reproducibility
 
-Используется [официальный CodeSearchNet](https://huggingface.co/datasets/code-search-net/code_search_net),
-Python, существующий upstream-раздел `train`. Это выбор источника, а не
-разбиение нового датасета. Parquet закреплён на ревизии
-`7e3332b8032ff895377dba3e57f0152fcb32ff7d`.
+The source is the [official CodeSearchNet](https://huggingface.co/datasets/code-search-net/code_search_net)
+Python data, upstream `train` partition. This chooses a source; it is not a split of the new
+dataset. The Parquet files are pinned to revision `7e3332b8032ff895377dba3e57f0152fcb32ff7d`.
 
-Загрузчик использует [потоковый режим Hugging Face Datasets](https://huggingface.co/docs/datasets/en/stream)
-и читает только столбцы кода и происхождения. Seed **42**, буфер перемешивания
-**1000**; это воспроизводимая выборка из начала перемешанного потока,
-**не равномерная выборка всего корпуса**. Чтение прекращается после 10 000
-принятых функций; библиотека может заранее прочитать буфер и группы строк
-Parquet. Ограничение просмотра — 100 000 записей (`--max-scan`).
-Весь архив CodeSearchNet загружать не требуется.
+The loader uses [Hugging Face Datasets streaming](https://huggingface.co/docs/datasets/en/stream)
+and reads only the code and provenance columns. Seed **42** and a shuffle buffer of **1000**
+give a reproducible sample from the start of the shuffled stream, **not a uniform sample of
+the whole corpus**. Reading stops after 10,000 accepted functions (the library may read
+ahead a buffer and Parquet row groups); at most 100,000 records are scanned (`--max-scan`).
+The full CodeSearchNet archive is not downloaded.
 
-Parquet читается последовательными пакетами по 256 записей через PyArrow,
-перемешивание выполняет `datasets.IterableDataset`. Это позволяет остановить
-поток без фонового многопоточного сканера, который в проверенном окружении
-падал при завершении Python после ранней остановки.
+Parquet is read in sequential batches of 256 records with PyArrow and shuffled by
+`datasets.IterableDataset`. This allows stopping the stream without a background
+multi-threaded scanner, which crashed at Python shutdown after an early stop in the tested
+environment.
 
-Для повторения используйте сохранённый JSONL и версии из manifest: порядок
-потока зависит от `datasets`, а AST — от Python. В raw JSONL принятые записи
-имеют `source_id`, совпадающий с clean CSV; отброшенные — `source_id=null`.
-Сохранены репозиторий, путь, имя функции и URL исходника. Отдельные поля
-документации не загружаются.
+To repeat a run, use the saved JSONL and the versions in the manifest: the stream order
+depends on `datasets` and the AST on Python. In the raw JSONL, accepted records have the same
+`source_id` as the clean CSV; rejected ones have `source_id=null`. Repository, path, function
+name and source URL are kept. Separate documentation fields are not downloaded.
 
-## Очистка
+### Cleaning
 
-- Нормализуются CRLF/CR в LF, удаляются внешние пробелы и пустые примеры.
-- `ast.parse()` отбрасывает синтаксически некорректные примеры.
-- Допускается ровно одна верхнеуровневая `FunctionDef` или `AsyncFunctionDef`,
-  включая декораторы; случайные фрагменты и целые классы отбрасываются.
-- Начальные строки документации удаляются по координатам AST без
-  форматирования остального тела. Если тело состояло только из них,
-  остаётся `pass`.
-- Точное совпадение очищенного кода считается дубликатом.
-- ID назначается после очистки, начиная с `000001`.
+- CRLF/CR are normalized to LF, surrounding whitespace and empty samples are removed.
+- `ast.parse()` drops syntactically invalid samples.
+- Exactly one top-level `FunctionDef` or `AsyncFunctionDef` (decorators allowed) is
+  accepted; fragments and whole classes are dropped.
+- Leading docstrings are removed by AST coordinates without reformatting the rest of the
+  body. If the body consisted only of docstrings, `pass` remains.
+- An exact match of the cleaned code counts as a duplicate.
+- IDs are assigned after cleaning, starting from `000001`.
 
-`Valid Python` включает синтаксически корректные дубликаты и отсеянные
-нефункциональные фрагменты. `Invalid Python` — ошибки разбора/обработки;
-первые пять сообщений сохранены в статистике. Пустые примеры учитываются
-отдельно. При недостатке данных команда завершается ошибкой и не публикует
-неполный CSV как успешный результат.
+`Valid Python` includes syntactically valid duplicates and rejected non-function fragments.
+`Invalid Python` counts parse/processing errors; the first five messages are kept in the
+statistics. Empty samples are counted separately. If there is not enough data, the command
+fails instead of publishing an incomplete CSV as a success.
 
-## Мутации
+### Mutations
 
-| Категория | Замены |
+| Category | Replacements |
 |---|---|
 | `comparison_operator` | `== → !=`, `!= → ==`, `> → <`, `< → >`, `>= → >`, `<= → <` |
 | `arithmetic_operator` | `+ → -`, `- → +`, `* → /`, `/ → *` |
 | `boolean_operator` | `and → or`, `or → and` |
 
-Случайно выбираются применимая категория и узел. Меняется **один оператор
-AST**, результат преобразуется через `ast.unparse()` и проверяется повторным
-разбором. Для итогового CSV заменяется только токен этого оператора в
-исходном тексте. Полученное дерево обязано совпасть с мутированным AST:
-глобальной замены строк нет. Сохраняются строки, комментарии и оформление
-в обоих классах.
+An applicable category and node are chosen at random. **One AST operator** is changed, the
+result is rendered with `ast.unparse()` and re-parsed. In the final CSV only that operator's
+token is replaced in the source text, and the resulting tree must match the mutated AST:
+there is no global string replacement. Strings, comments and formatting are preserved in both
+classes.
 
-Операторы в декораторах, аннотациях и значениях аргументов по умолчанию
-не изменяются. В цепочках сравнений меняется одно сравнение. Для булевых
-операций используются узлы с двумя операндами: плоское `a and b and c`
-требовало бы замены двух токенов при прямой замене `BoolOp.op` и пропускается.
-Вложенные бинарные операции допускаются.
+Operators in decorators, annotations and default argument values are not changed. In
+comparison chains one comparison is changed. Boolean operations use nodes with two operands:
+a flat `a and b and c` would need two token replacements for a direct `BoolOp.op` change and
+is skipped. Nested binary operations are allowed.
 
-Невалидные или меняющие структуру приоритета кандидаты пропускаются;
-проверяются оставшиеся. Проверяется совпадение со **всеми** чистыми примерами
-и принятыми мутациями. Если подходящего уникального варианта нет, сохраняется
-только чистая функция. `Invalid mutations skipped` считает попытки, а не
-функции; отдельно выводятся коллизии и число функций без мутации.
+Invalid candidates, or ones that change operator precedence, are skipped and the remaining
+ones are tried. Each mutation is checked against **all** clean samples and accepted
+mutations; if no unique valid variant exists, only the clean function is kept.
+`Invalid mutations skipped` counts attempts, not functions; collisions and functions without
+a mutation are reported separately.
 
-Замена оператора создаёт синтетическую метку, но не доказывает поведенческую
-ошибку на реальных входах. Код датасета никогда не исполняется.
+Replacing an operator creates a synthetic label; it does not prove a behavioural error on real
+inputs. Dataset code is never executed.
 
-## Проверки и чтение CSV
+### Checks and reading the CSV
 
-Перед записью проверяются разбор всего кода, глобальная уникальность,
-допустимые метки, категории, ID, наличие чистого оригинала для каждой мутации
-и ровно одна разрешённая замена в AST каждой пары.
+Before writing, the pipeline checks that all code parses, global uniqueness, allowed labels,
+categories and IDs, that every mutation has its clean original, and that each pair differs by
+exactly one allowed AST replacement.
 
 ```python
 import pandas as pd
 
 df = pd.read_csv(
     "data/processed/bug_detection_dataset.csv",
-    dtype={"source_id": str},  # сохранить ведущие нули
+    dtype={"source_id": str},  # keep leading zeros
     keep_default_na=False,
 )
 ```
 
-```bash
-pytest -v
-```
-
 Source-ID splitting, training, and evaluation are implemented in the baseline below.
-## TF-IDF + Logistic Regression Baseline
+
+### TF-IDF + Logistic Regression Baseline
 
 Character-level TF-IDF represents Python source code using character n-grams.
 These features capture local syntax and operators such as `==`, `!=`, `>=`, `+`,
