@@ -93,7 +93,7 @@ def test_pair_supervision(shared, tmp_path):
 def api(shared, tmp_path):
     root = tmp_path / "models"
     assert train(shared, root / "tfidf_v2")["reload_predictions_identical"]
-    with TestClient(create_app(root)) as client:
+    with TestClient(create_app(root, tmp_path / "feedback")) as client:
         yield client
 
 
