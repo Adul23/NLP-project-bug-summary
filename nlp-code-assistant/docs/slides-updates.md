@@ -77,9 +77,28 @@ Remove: "one seed".
 
 Add:
 
-> - Bugs are synthetic single-operator mutations; performance on real bugs is not measured yet.
+> - Trained on synthetic single-operator mutations only. On 500 real operator fixes from GitHub
+>   (CTSSB-1M) the classifiers are near chance: CodeBERT ROC AUC 0.53, TF-IDF 0.50.
+> - Localization transfers partly: on real fixes of the trained kind CodeBERT ranks the exact fix
+>   first 44% of the time (random 28.5%, synthetic 78%); 31% of real fixes cannot be proposed.
 > - CodeBERT and CodeT5 were pretrained on CodeSearchNet and may have seen the test functions.
 > - Latencies were measured on different hardware (CodeBERT and TF-IDF on a laptop CPU,
 >   CodeT5 on an Apple M4) and are not directly comparable.
 > - Localization only proposes operators from the mutation tables; `<=` and `>=` never get a
 >   candidate.
+
+## 6. New slide: real bugs
+
+Title: **Does it work on real bugs?**
+
+> 500 real single-operator fixes from 488 GitHub projects (CTSSB-1M), evaluation only.
+
+| | CodeBERT | TF-IDF | Random |
+|---|---:|---:|---:|
+| Buggy vs fixed, ROC AUC | 0.53 | 0.50 | 0.50 |
+| Exact fix ranked 1st (fixable pairs) | **44%** | 38% | 28.5% |
+| Exact fix in top 3 (fixable pairs) | **78%** | 70% | 61% |
+
+Speaker note: synthetic F1 0.76 does not carry over. The detector learned what our
+mutations look like, not what real bugs look like. Localization is the part that still helps,
+and CodeBERT is significantly better than TF-IDF there (McNemar p = 0.033).

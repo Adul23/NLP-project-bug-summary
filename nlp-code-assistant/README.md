@@ -20,7 +20,10 @@ summarization, and a small FastAPI backend. Source code is never executed.
 - **Product.** FastAPI backend and React frontend; feedback-driven CodeBERT retraining runs as
   a background job.
 
-All bugs are synthetic single-operator mutations; results on real bugs are not measured yet.
+All training bugs are synthetic single-operator mutations. On 500 real operator fixes from
+GitHub (CTSSB-1M) neither classifier separates the buggy version from the fix (CodeBERT ROC AUC
+0.53, TF-IDF 0.50); localization keeps some signal (CodeBERT ranks the exact fix first in 44%
+of fixable cases vs 28.5% at random). See [Real bugs](#real-bugs).
 
 ## Setup and CPU baseline
 
@@ -378,6 +381,25 @@ the same mutation tables; `<=` and `>=` never get candidates. `/analyze` returns
 repair as an unverified explanation when no original code is given (see API above). Method,
 per-type results and limitations: `docs/bug-localization-results.md`.
 
+## Real bugs
+
+Evaluation only (nothing is trained on it). `scripts/collect_real_bugs.py` turns CTSSB-1M
+binary-operator fixes into 500 buggy/fixed function pairs from 488 GitHub repositories;
+344 pairs are a change our mutation tables can produce (`in_tables`).
+
+| | CodeBERT | TF-IDF |
+|---|---:|---:|
+| Classifier ROC AUC, all 1,000 functions | 0.530 | 0.503 |
+| Classifier ROC AUC, `in_tables` | 0.556 | 0.509 |
+| Localization top-1, `in_tables` (random: 28.5%) | **44.2%** | 37.8% |
+| Localization top-3, `in_tables` (random: 61.3%) | **78.2%** | 69.5% |
+
+The classifiers do not transfer: on real bugs they are at or barely above chance. Given a
+buggy function, localization still beats random and CodeBERT beats TF-IDF (McNemar top-1
+p = 0.033), but at about half the synthetic accuracy. 31% of the real fixes cannot be proposed
+at all (mostly a correct `>`/`<` that became `>=`/`<=`). The pairs CSV holds third-party code
+and is not committed; results are in `results/real_bugs/`, details in `docs/real-bugs.md`.
+
 ## Metrics
 
 Bug detection is scored by `src/evaluation/bug_metrics.py` and `src/evaluation/compare_models.py`;
@@ -555,8 +577,8 @@ scores are not model comparison results. Training never starts at import. A real
 smoke test is saved in `results/api_smoke.json`.
 
 Limitations: the bugs are synthetic single-operator replacements, which may not change
-behaviour, and the "clean" originals may already contain bugs. Performance on real bugs is
-not measured. Dataset sampling, repository overlap and semantic clones limit generalization,
+behaviour, and the "clean" originals may already contain bugs. On real bugs the
+classifiers are near chance (see [Real bugs](#real-bugs)). Dataset sampling, repository overlap and semantic clones limit generalization,
 and CodeBERT and CodeT5 were pretrained on CodeSearchNet, so they may have seen the test
 functions. Latencies were measured on different hardware (TF-IDF and CodeBERT on a laptop
 CPU, CodeT5 on an Apple M4) and are not directly comparable.

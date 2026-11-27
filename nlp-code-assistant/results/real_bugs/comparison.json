@@ -1,0 +1,65 @@
+{
+  "n": 500,
+  "model_a": "codebert",
+  "model_b": "tfidf",
+  "top1": {
+    "codebert": 0.304,
+    "tfidf": 0.26,
+    "table": [
+      [
+        92,
+        60
+      ],
+      [
+        38,
+        310
+      ]
+    ],
+    "table_layout": "rows: model A correct / wrong; columns: model B correct / wrong",
+    "b": 60,
+    "c": 38,
+    "exact_p": 0.03336002889694201,
+    "chi2": 4.5,
+    "chi2_p": 0.033894853524689295
+  },
+  "top3": {
+    "codebert": 0.538,
+    "tfidf": 0.478,
+    "table": [
+      [
+        217,
+        52
+      ],
+      [
+        22,
+        209
+      ]
+    ],
+    "table_layout": "rows: model A correct / wrong; columns: model B correct / wrong",
+    "b": 52,
+    "c": 22,
+    "exact_p": 0.0006428073490507027,
+    "chi2": 11.364864864864865,
+    "chi2_p": 0.0007484652260132678
+  },
+  "line_top1": {
+    "codebert": 0.524,
+    "tfidf": 0.5,
+    "table": [
+      [
+        206,
+        56
+      ],
+      [
+        44,
+        194
+      ]
+    ],
+    "table_layout": "rows: model A correct / wrong; columns: model B correct / wrong",
+    "b": 56,
+    "c": 44,
+    "exact_p": 0.2712530240738354,
+    "chi2": 1.21,
+    "chi2_p": 0.27133212189276223
+  }
+}

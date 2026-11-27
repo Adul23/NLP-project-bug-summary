@@ -1,0 +1,85 @@
+{
+  "all": {
+    "n": 500,
+    "top1": 0.304,
+    "top3": 0.538,
+    "line_top1": 0.524,
+    "true_fix_missing": 159,
+    "mean_candidates": 8.872,
+    "random_top1": 0.320578833946952,
+    "random_top3": 0.5937365018408561
+  },
+  "by_mutation_type": {
+    "arithmetic_operator": {
+      "n": 58,
+      "top1": 0.3103448275862069,
+      "top3": 0.5862068965517241,
+      "line_top1": 0.41379310344827586,
+      "true_fix_missing": 6,
+      "mean_candidates": 12.051724137931034,
+      "random_top1": 0.24050823714560238,
+      "random_top3": 0.5146281597126692
+    },
+    "boolean_operator": {
+      "n": 72,
+      "top1": 0.5416666666666666,
+      "top3": 0.8055555555555556,
+      "line_top1": 0.6666666666666666,
+      "true_fix_missing": 0,
+      "mean_candidates": 9.13888888888889,
+      "random_top1": 0.29983285376894236,
+      "random_top3": 0.6425541168623826
+    },
+    "comparison_operator": {
+      "n": 370,
+      "top1": 0.25675675675675674,
+      "top3": 0.4783783783783784,
+      "line_top1": 0.5135135135135135,
+      "true_fix_missing": 153,
+      "mean_candidates": 8.321621621621622,
+      "random_top1": 0.3371674966153168,
+      "random_top3": 0.5966376249810856
+    }
+  },
+  "classifier_detected": {
+    "n": 206,
+    "top1": 0.35436893203883496,
+    "top3": 0.6407766990291263,
+    "line_top1": 0.5922330097087378,
+    "true_fix_missing": 43,
+    "mean_candidates": 7.490291262135922,
+    "random_top1": 0.32598029305398624,
+    "random_top3": 0.6284263160551625
+  },
+  "classifier_missed": {
+    "n": 294,
+    "top1": 0.2687074829931973,
+    "top3": 0.46598639455782315,
+    "line_top1": 0.47619047619047616,
+    "true_fix_missing": 116,
+    "mean_candidates": 9.84013605442177,
+    "random_top1": 0.3167941381100506,
+    "random_top3": 0.5694300333777707
+  },
+  "in_tables": {
+    "n": 344,
+    "top1": 0.4418604651162791,
+    "top3": 0.7819767441860465,
+    "line_top1": 0.6162790697674418,
+    "true_fix_missing": 3,
+    "mean_candidates": 8.98546511627907,
+    "random_top1": 0.28485601794994314,
+    "random_top3": 0.6132889840823875
+  },
+  "not_in_tables": {
+    "n": 156,
+    "top1": 0.0,
+    "top3": 0.0,
+    "line_top1": 0.32051282051282054,
+    "true_fix_missing": 156,
+    "mean_candidates": 8.621794871794872,
+    "random_top1": 0.39935222306856144,
+    "random_top3": 0.5506207717697866
+  },
+  "skipped_unparsable": 0
+}
