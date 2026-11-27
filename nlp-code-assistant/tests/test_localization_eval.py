@@ -79,3 +79,24 @@ def test_constant_predictor_is_not_better_than_ranking_order():
     rows, summary = evaluate(test, Constant(), progress=False)
     assert summary["all"]["top3"] >= summary["all"]["top1"]
     assert summary["classifier_detected"]["n"] == 3  # 0.5 >= default threshold 0.5
+
+
+def test_real_bug_csv_split_by_in_tables():
+    from src.evaluation.localization_eval import score_classifier
+
+    test, originals = make_test_split()
+    test = test[test.source_id != "999999"].copy()
+    test["in_tables"] = test.source_id.isin(["000000", "000001"])
+    rows, summary = evaluate(test, OraclePredictor(originals), progress=False)
+    assert rows.in_tables.tolist() == [True, True, False]
+    assert summary["in_tables"]["n"] == 2 and summary["not_in_tables"]["n"] == 1
+
+    scores = score_classifier(test, OraclePredictor(originals), threshold=0.5)
+    assert scores["all"]["n"] == 6 and scores["all"]["bug_f1"] == 1.0
+    assert scores["in_tables"]["n"] == 4 and scores["not_in_tables"]["n"] == 2
+
+
+def test_summary_has_no_in_tables_split_for_synthetic_data():
+    test, originals = make_test_split()
+    _, summary = evaluate(test, OraclePredictor(originals), progress=False)
+    assert "in_tables" not in summary

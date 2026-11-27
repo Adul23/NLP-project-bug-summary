@@ -5,6 +5,10 @@ localize() ranks single-operator repairs by the drop in bug probability; we reco
 the true fix lands. The random baseline is what picking a candidate uniformly would give.
 
     python -m src.evaluation.localization_eval --model codebert --device cuda
+
+With --data <csv> (e.g. real bug pairs from scripts/collect_real_bugs.py) the CSV replaces
+the test split, results go to results/real_bugs/, and the classifier itself is also scored
+on every row (F1 / precision / recall, overall and by the optional `in_tables` column).
 """
 
 import argparse
@@ -23,6 +27,7 @@ def evaluate(
     """Rows (one per buggy function with an original) and a summary dict."""
     originals = test[test.label == 0].set_index("source_id").code
     buggy = test[(test.label == 1) & test.source_id.isin(originals.index)]
+    has_in_tables = "in_tables" in buggy.columns
     rows = []
     for i, row in enumerate(buggy.itertuples(index=False), start=1):
         original = originals[row.source_id]
@@ -42,6 +47,7 @@ def evaluate(
                 "line_top1": best is not None and best["line"] == true_line,
                 "detected": result["bug_probability"] >= threshold,
                 "bug_probability": result["bug_probability"],
+                **({"in_tables": bool(row.in_tables)} if has_in_tables else {}),
             }
         )
         if progress and i % 100 == 0:
@@ -65,7 +71,7 @@ def _stats(frame: pd.DataFrame) -> dict:
 
 
 def summarize(frame: pd.DataFrame) -> dict:
-    return {
+    summary = {
         "all": _stats(frame),
         "by_mutation_type": {k: _stats(g) for k, g in frame.groupby("mutation_type")},
         "classifier_detected": _stats(frame[frame.detected])
@@ -75,6 +81,30 @@ def summarize(frame: pd.DataFrame) -> dict:
         if (~frame.detected).any()
         else None,
     }
+    if "in_tables" in frame:
+        for name, part in (("in_tables", frame[frame.in_tables]),
+                           ("not_in_tables", frame[~frame.in_tables])):
+            summary[name] = _stats(part) if len(part) else None
+    return summary
+
+
+def score_classifier(data: pd.DataFrame, predictor, threshold: float) -> dict:
+    """Classification metrics on every row, overall and split by `in_tables` if present."""
+    from src.evaluation.bug_metrics import compute_bug_metrics
+
+    probs = [r["bug_probability"] for r in predictor.predict_batch(data.code.tolist())]
+    data = data.assign(prob=probs, pred=[int(p >= threshold) for p in probs])
+
+    def metrics(part):
+        return compute_bug_metrics(part.label, part.pred, part.prob, part.mutation_type)
+
+    result = {"threshold": threshold, "all": metrics(data)}
+    if "in_tables" in data:
+        # pairs share in_tables, so both labels are in each part
+        for name, part in (("in_tables", data[data.in_tables]),
+                           ("not_in_tables", data[~data.in_tables])):
+            result[name] = metrics(part) if len(part) else None
+    return result
 
 
 def main():
@@ -86,8 +116,14 @@ def main():
     p.add_argument(
         "--limit", type=int, default=None, help="first N buggy functions (smoke test)"
     )
-    p.add_argument("--output", type=Path, default=ROOT / "results/localization")
+    p.add_argument(
+        "--data", type=Path, default=None,
+        help="CSV with sample_id, source_id, code, label, mutation_type (replaces the test split)",
+    )
+    p.add_argument("--output", type=Path, default=None,
+                   help="default: results/localization, or results/real_bugs with --data")
     a = p.parse_args()
+    output = a.output or ROOT / ("results/real_bugs" if a.data else "results/localization")
 
     from src.inference.models import LoraPredictor, TfidfPredictor
 
@@ -100,17 +136,26 @@ def main():
         )
         threshold = predictor.config.get("decision_threshold") or 0.5
 
-    (_, _, test), _ = load_splits(a.split_dir)
+    if a.data:
+        test = pd.read_csv(a.data, dtype={"source_id": str})
+    else:
+        (_, _, test), _ = load_splits(a.split_dir)
     if a.limit:
         keep = test[test.label == 1].source_id.head(a.limit)
         test = test[test.source_id.isin(keep)]
     rows, summary = evaluate(test, predictor, threshold)
-    a.output.mkdir(parents=True, exist_ok=True)
-    rows.to_csv(a.output / f"{a.model}_rows.csv", index=False)
-    (a.output / f"{a.model}_summary.json").write_text(
-        json.dumps(summary, indent=2) + "\n"
-    )
+    output.mkdir(parents=True, exist_ok=True)
+    rows.to_csv(output / f"{a.model}_rows.csv", index=False)
+    (output / f"{a.model}_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps(summary["all"], indent=2))
+    if a.data:
+        scores = score_classifier(test, predictor, threshold)
+        (output / f"{a.model}_classifier.json").write_text(json.dumps(scores, indent=2) + "\n")
+        for name in ("all", "in_tables", "not_in_tables"):
+            m = scores.get(name)
+            if m:
+                print(f"classifier {name:13s} n={m['n']:4d}  F1 {m['bug_f1']:.3f}  "
+                      f"P {m['bug_precision']:.3f}  R {m['bug_recall']:.3f}  acc {m['accuracy']:.3f}")
 
 
 if __name__ == "__main__":
