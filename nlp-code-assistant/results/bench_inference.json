@@ -1,0 +1,92 @@
+{
+  "model_dir": "/content/drive/MyDrive/nlp-project/codebert_lora_seed42",
+  "device": "Tesla T4",
+  "torch": "2.14.1+cu130",
+  "n_agreement": 200,
+  "threshold": 0.5,
+  "warmup": 10,
+  "repeats": 50,
+  "reference": "adapter fp32 eager",
+  "rows": [
+    {
+      "weights": "adapter",
+      "precision": "fp32",
+      "mode": "eager",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 0.0,
+      "batch1_ms": 11.870449000525696,
+      "batch16_ms": 423.07986250034446,
+      "peak_mem_mb": 768.3681640625
+    },
+    {
+      "weights": "adapter",
+      "precision": "fp16",
+      "mode": "eager",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 0.0016788840293884277,
+      "batch1_ms": 14.73169200016855,
+      "batch16_ms": 112.91061649990297,
+      "peak_mem_mb": 684.5556640625
+    },
+    {
+      "weights": "adapter",
+      "precision": "fp32",
+      "mode": "compile",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 2.086162567138672e-06,
+      "batch1_ms": 12.563271999169956,
+      "batch16_ms": 447.97830549941864,
+      "peak_mem_mb": 664.7431640625
+    },
+    {
+      "weights": "adapter",
+      "precision": "fp16",
+      "mode": "compile",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 0.0014770925045013428,
+      "batch1_ms": 7.662606499252433,
+      "batch16_ms": 105.8063749997018,
+      "peak_mem_mb": 594.63134765625
+    },
+    {
+      "weights": "merged",
+      "precision": "fp32",
+      "mode": "eager",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 2.4437904357910156e-06,
+      "batch1_ms": 12.944577500093146,
+      "batch16_ms": 487.85150650019204,
+      "peak_mem_mb": 765.98388671875
+    },
+    {
+      "weights": "merged",
+      "precision": "fp16",
+      "mode": "eager",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 0.0025321096181869507,
+      "batch1_ms": 9.846769999967364,
+      "batch16_ms": 127.45225050002773,
+      "peak_mem_mb": 682.04638671875
+    },
+    {
+      "weights": "merged",
+      "precision": "fp32",
+      "mode": "compile",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 3.1441450119018555e-06,
+      "batch1_ms": 12.993364999601908,
+      "batch16_ms": 486.7571245004001,
+      "peak_mem_mb": 765.98486328125
+    },
+    {
+      "weights": "merged",
+      "precision": "fp16",
+      "mode": "compile",
+      "label_agreement": 1.0,
+      "max_abs_prob_diff": 0.0019066929817199707,
+      "batch1_ms": 7.129754500965646,
+      "batch16_ms": 104.75958949973574,
+      "peak_mem_mb": 591.23974609375
+    }
+  ]
+}

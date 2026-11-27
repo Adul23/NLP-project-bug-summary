@@ -544,6 +544,40 @@ saved run in `results/model_comparison.json`. TF-IDF probabilities are over-conf
 (see `results/figures/reliability.png`): above 0.8 predicted, only about 50–60% of rows are buggy,
 consistent with its `class_weight="balanced"` training.
 
+#### Efficiency on GPU (CodeBERT, Tesla T4)
+
+`scripts/bench_inference.py` (results in `results/bench_inference.json`) measures the seed-42
+model in every combination of unmerged adapter vs merged LoRA weights, fp32 vs fp16 autocast
+and eager vs `torch.compile`. Latency is the median of 50 forward passes after 10 warm-up
+passes, synchronized with `torch.cuda.synchronize()`, tokenization excluded; peak memory
+includes the weights. Agreement is against the adapter / fp32 / eager mode on 200 random
+validation functions.
+
+| Weights | Precision | Mode | Batch 1 (ms) | Batch 16 (ms) | Peak memory (MB) | Same label | Max prob. difference |
+|---|---|---|---:|---:|---:|---:|---:|
+| adapter | fp32 | eager | 11.9 | 423.1 | 768 | reference | reference |
+| adapter | fp16 | eager | 14.7 | 112.9 | 685 | 200/200 | 0.0017 |
+| adapter | fp32 | compile | 12.6 | 448.0 | 665 | 200/200 | 2e-6 |
+| adapter | fp16 | compile | 7.7 | 105.8 | 595 | 200/200 | 0.0015 |
+| merged | fp32 | eager | 12.9 | 487.9 | 766 | 200/200 | 2e-6 |
+| merged | fp16 | eager | 9.8 | 127.5 | 682 | 200/200 | 0.0025 |
+| merged | fp32 | compile | 13.0 | 486.8 | 766 | 200/200 | 3e-6 |
+| merged | fp16 | compile | **7.1** | **104.8** | **591** | 200/200 | 0.0019 |
+
+- **fp16 autocast is the main gain:** batch 16 is about 3.8x faster (423 → 113 ms adapter,
+  488 → 127 ms merged), i.e. about 150 instead of 38 functions per second, with the same label
+  on all 200 functions and probabilities within 0.0025.
+- **`torch.compile` helps only together with fp16, and mostly at batch 1:** 7.1–7.7 ms against
+  9.8–14.7 ms in fp16 eager; at batch 16 it adds 6–18%. In fp32 it gives nothing. Compiling takes
+  time once per input shape, so with varying function lengths in the API the first requests
+  are slow.
+- **Merging the adapter gave no measurable gain** here; merged fp32 was even slower at
+  batch 16 (488 vs 423 ms). This is one run on a shared Colab GPU, where clocks vary; a
+  difference of this size is not reliable.
+- Best mode (merged, fp16, compile): batch 1 1.7x and batch 16 4.0x faster than the
+  reference, 23% less peak memory (591 vs 768 MB). The API still runs fp32 eager; this was
+  measured, not switched on.
+
 ### Measured: summarization
 
 Summarization is evaluated in `docs/summarization-results.md` (validation for every choice,

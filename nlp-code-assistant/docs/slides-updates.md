@@ -102,3 +102,22 @@ Title: **Does it work on real bugs?**
 Speaker note: synthetic F1 0.76 does not carry over. The detector learned what our
 mutations look like, not what real bugs look like. Localization is the part that still helps,
 and CodeBERT is significantly better than TF-IDF there (McNemar p = 0.033).
+
+## 7. Optional slide: inference speed on GPU
+
+Source: `results/bench_inference.json` (CodeBERT seed 42, Tesla T4, median of 50 passes,
+tokenization excluded, 200 validation functions for agreement).
+
+> **CodeBERT inference on a T4**
+>
+> | Mode | Batch 1 | Batch 16 | Peak memory |
+> |---|---:|---:|---:|
+> | fp32, eager (as trained) | 11.9 ms | 423 ms | 768 MB |
+> | fp16 autocast | 9.8–14.7 ms | 113–127 ms | 685 MB |
+> | fp16 + `torch.compile`, merged LoRA | **7.1 ms** | **105 ms** | **591 MB** |
+>
+> fp16 gives the same label on 200/200 validation functions (probabilities within 0.0025).
+
+Speaker note: fp16 is the main gain (about 4x at batch 16); compile adds speed mainly at
+batch 1; merging the LoRA weights made no measurable difference. One run on a Colab GPU.
+The API still uses fp32 eager.
