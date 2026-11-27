@@ -358,6 +358,37 @@ boolean 72/131 = 0.5496. Comparison was easiest and boolean hardest in this run.
 See `results/model_comparison.json`, `results/tfidf_v2_metrics.json` and
 `models/codebert_lora/metrics.json` for measured values, provenance and per-class reports. Models and generated data remain ignored.
 
+## Learning curves
+
+Values in `results/learning_curves.json` (CodeBERT: Colab training logs of the three seeds;
+CodeT5: `docs/summarization-results.md`). Regenerate the figures with
+`python scripts/plot_learning_curves.py`. In both figures a circle marks the selected
+checkpoint; the test split is evaluated once, after selection.
+
+![CodeBERT + LoRA learning curves, three seeds](results/figures/codebert_learning_curves.png)
+
+CodeBERT + LoRA (Colab T4, batch 16, fp16, 645 steps per epoch). Left: cross-entropy loss,
+train (mean of the last 500 steps, dashed) and validation (per epoch). Right: validation
+BUGGY F1 per epoch; the checkpoint with the best validation F1 is kept.
+
+- Validation loss falls from 0.41–0.45 after epoch 1 to about 0.31 and flattens; train loss
+  reaches about 0.32. There is no sign of overfitting.
+- Validation loss below train loss early on is expected: the train value is averaged over the
+  last 500 steps with dropout on, validation is measured at the end of the epoch without it.
+- Validation F1 jumps between epochs (threshold 0.5) while the loss is smooth.
+- For 2 of 3 seeds the best epoch is the last one (5), so the model may be slightly
+  undertrained (not tested).
+
+![CodeT5-small validation loss per epoch](results/figures/codet5_val_loss.png)
+
+CodeT5-small (Apple M4, batch 8, seed 42); the checkpoint with the best validation loss is kept.
+
+- Full fine-tuning overfits after epoch 4 (validation loss 2.5604 at epoch 4, 2.6248 at
+  epoch 6); early stopping (patience 2) ends it at epoch 6.
+- LoRA r8 is still improving at epoch 8, where the linear learning-rate schedule reaches zero.
+- LoRA r16 flattens after epoch 5; its best epoch is 11 (2.6972).
+- Train loss per epoch for CodeT5 is not in the repository (r16 only: 3.843 → 2.486).
+
 ## Bug localization
 
 The classifier says whether a function looks buggy; `src/bug_detection/localize.py` guesses
@@ -612,7 +643,13 @@ smoke test is saved in `results/api_smoke.json`.
 
 Limitations: the bugs are synthetic single-operator replacements, which may not change
 behaviour, and the "clean" originals may already contain bugs. On real bugs the
-classifiers are near chance (see [Real bugs](#real-bugs)). Dataset sampling, repository overlap and semantic clones limit generalization,
+classifiers are near chance (see [Real bugs](#real-bugs)). Near-duplicate check
+(`scripts/near_duplicates.py`, [`results/near_duplicates.json`](results/near_duplicates.json)):
+no clean validation or test function has a train function with TF-IDF cosine similarity
+≥ 0.95, but 112 of 1,500 validation and 137 of 1,500 test functions reach ≥ 0.8 (17 and 14
+reach ≥ 0.9). The closest pairs (0.945, 0.940) are sibling methods with identical bodies
+apart from one call (`is_char_device` / `is_block_device`, `symmetric_difference` / `without`):
+the split separates functions, not repositories. Dataset sampling, repository overlap and semantic clones limit generalization,
 and CodeBERT and CodeT5 were pretrained on CodeSearchNet, so they may have seen the test
 functions. Latencies were measured on different hardware (TF-IDF and CodeBERT on a laptop
 CPU, CodeT5 on an Apple M4) and are not directly comparable.

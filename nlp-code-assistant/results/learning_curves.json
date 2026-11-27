@@ -1,0 +1,41 @@
+{
+  "codebert_lora": {
+    "source": "Colab T4 training logs (HF Trainer stdout), 2026-11-25; config: batch 16, fp16, 5 epochs, lr 2e-4 linear, warmup 6%, weight decay 0.01, LoRA r=8 on query/value; checkpoint = best validation bug_f1",
+    "steps_per_epoch": 645,
+    "train_loss_logging_every_steps": 500,
+    "seeds": {
+      "42": {
+        "train_loss": {"epoch": [0.78, 1.55, 2.33, 3.10, 3.88, 4.65], "loss": [0.6186, 0.4216, 0.3899, 0.3587, 0.3302, 0.3269]},
+        "validation": {"epoch": [1, 2, 3, 4, 5],
+                       "loss": [0.4053, 0.3438, 0.3202, 0.3126, 0.3123],
+                       "bug_f1": [0.6662, 0.7332, 0.7090, 0.7416, 0.7477],
+                       "accuracy": [0.7884, 0.8237, 0.8363, 0.8336, 0.8386]},
+        "selected_epoch": 5
+      },
+      "13": {
+        "train_loss": {"epoch": [0.78, 1.55, 2.33, 3.10, 3.88, 4.65], "loss": [0.6290, 0.4539, 0.3800, 0.3615, 0.3356, 0.3236]},
+        "validation": {"epoch": [1, 2, 3, 4, 5],
+                       "loss": [0.4461, 0.3665, 0.3156, 0.3154, 0.3058],
+                       "bug_f1": [0.6974, 0.6789, 0.7578, 0.7713, 0.7525],
+                       "accuracy": [0.7627, 0.8255, 0.8422, 0.8431, 0.8463]},
+        "selected_epoch": 4
+      },
+      "7": {
+        "train_loss": {"epoch": [0.78, 1.55, 2.33, 3.10, 3.88, 4.65], "loss": [0.6402, 0.4366, 0.3824, 0.3496, 0.3337, 0.3218]},
+        "validation": {"epoch": [1, 2, 3, 4, 5],
+                       "loss": [0.4118, 0.3197, 0.3194, 0.3059, 0.3052],
+                       "bug_f1": [0.6686, 0.7576, 0.7329, 0.7628, 0.7709],
+                       "accuracy": [0.7902, 0.8377, 0.8467, 0.8535, 0.8562]},
+        "selected_epoch": 5
+      }
+    }
+  },
+  "codet5_small": {
+    "source": "docs/summarization-results.md (validation loss per epoch; Apple M4, fp32, batch 8, seed 42); checkpoint = best validation loss; train loss per epoch not in the repository (r16 only: 3.843 -> 2.486)",
+    "runs": {
+      "Full FT": {"epoch": [1, 2, 3, 4, 5, 6], "val_loss": [2.7385, 2.6171, 2.5785, 2.5604, 2.5973, 2.6248], "selected_epoch": 4, "stop": "early stopping (patience 2)"},
+      "LoRA r8": {"epoch": [1, 2, 3, 4, 5, 6, 7, 8], "val_loss": [2.9466, 2.9008, 2.8787, 2.8636, 2.8486, 2.8423, 2.8365, 2.8336], "selected_epoch": 8, "stop": "schedule end"},
+      "LoRA r16": {"epoch": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "val_loss": [2.8851, 2.8221, 2.7915, 2.7521, 2.7204, 2.7265, 2.7115, 2.7131, 2.7058, 2.7063, 2.6972, 2.7030], "selected_epoch": 11, "stop": "schedule end"}
+    }
+  }
+}
