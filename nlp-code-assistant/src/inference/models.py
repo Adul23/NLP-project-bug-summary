@@ -141,55 +141,30 @@ class LoraPredictor:
 
 
 class CodeSummarizer:
-    """Fully fine-tuned CodeT5-small (src/summarization/train_codet5.py).
+    """API wrapper around src.summarization.summarize.CodeSummarizer (Saniya's code).
 
-    Produces a one-sentence, docstring-style summary of what a function does. This is a
-    separate model from the CodeT5 LoRA explainer (LoraPredictor with summarizer=True).
-    Input is the raw code with no prompt prefix, exactly as in training.
+    The fully fine-tuned CodeT5-small (src/summarization/train_codet5.py) produces a
+    one-sentence summary of what a function does; generation settings (4 beams, length
+    penalty 2.0, 384 input / 48 output tokens) come from summarize.py, where they were
+    chosen on validation. This class only fixes the folder layout, loads the model up
+    front so load errors surface as 503 at load time, and keeps the API response format.
+    It is a separate model from the CodeT5 LoRA explainer (LoraPredictor, summarizer=True).
     """
 
-    DEFAULT_MAX_LENGTH = 384
-    DEFAULT_MAX_TARGET = 48
-
     def __init__(self, folder, *, device="cpu"):
-        folder = Path(folder)
-        best = folder / "best"
+        best = Path(folder) / "best"
         # Fail before importing torch/transformers when nothing has been trained.
         for name in ("config.json", "model.safetensors"):
             if not (best / name).exists():
                 raise FileNotFoundError(f"Missing {best / name}")
-        import torch
-        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+        from src.summarization.summarize import CodeSummarizer as Summarizer
 
-        summary_path = folder / "training_summary.json"
-        summary = json.loads(summary_path.read_text()) if summary_path.exists() else {}
-        self.max_length = int(summary.get("max_length", self.DEFAULT_MAX_LENGTH))
-        self.max_target = int(summary.get("max_target", self.DEFAULT_MAX_TARGET))
-        self.tokenizer = AutoTokenizer.from_pretrained(best, local_files_only=True)
-        self.model = (
-            AutoModelForSeq2SeqLM.from_pretrained(best, local_files_only=True)
-            .to(device)
-            .eval()
-        )
-        self.torch = torch
+        self.summarizer = Summarizer(best, device=device)
+        self.summarizer._get_backend()  # load now; summarize.py loads lazily otherwise
 
     def summarize(self, code):
-        inputs = self.tokenizer(
-            code,
-            return_tensors="pt",
-            truncation=True,
-            max_length=self.max_length,
-        ).to(self.model.device)
-        with self.torch.inference_mode():
-            ids = self.model.generate(
-                **inputs,
-                num_beams=4,
-                max_new_tokens=self.max_target,
-                early_stopping=True,
-                do_sample=False,
-            )
         return {
-            "summary": self.tokenizer.decode(ids[0], skip_special_tokens=True).strip(),
+            "summary": self.summarizer.summarize(code),
             "summary_source": "codet5_finetuned",
             "model": "codet5_summarizer",
         }

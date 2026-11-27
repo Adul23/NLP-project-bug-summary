@@ -217,3 +217,32 @@ def test_cli_code_summarizer(tmp_path, monkeypatch, capsys):
         cli.main()
     assert stop.value.code == 1
     assert "Model unavailable" in capsys.readouterr().err
+
+
+def test_wrapper_uses_saniya_settings_and_api_format(tmp_path, monkeypatch):
+    """The API class delegates to src.summarization.summarize with its validated settings."""
+    from src.summarization import summarize as saniya
+
+    calls = []
+
+    class FakeBackend:
+        def __init__(self, checkpoint, device):
+            calls.append(("load", checkpoint, device))
+
+        def generate(self, code, **settings):
+            calls.append(("generate", settings))
+            return "  Add two\n numbers. "
+
+    monkeypatch.setattr(saniya, "_backend_factory", FakeBackend)
+    best = fake_best(tmp_path)
+    summarizer = CodeSummarizer(tmp_path / "codet5_summarizer")
+    assert calls == [("load", best, "cpu")]  # loaded up front, on CPU
+    assert summarizer.summarize(CODE) == {
+        "summary": "Add two numbers.",  # whitespace collapsed by summarize.py
+        "summary_source": "codet5_finetuned",
+        "model": "codet5_summarizer",
+    }
+    assert calls[1] == (
+        "generate",
+        {"num_beams": 4, "length_penalty": 2.0, "max_length": 384, "max_new_tokens": 48},
+    )

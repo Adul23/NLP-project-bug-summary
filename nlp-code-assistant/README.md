@@ -241,7 +241,9 @@ transformer base weights must already be in the local cache or at the saved path
   503 if the model is missing or fails.
 
 The summary model is a full CodeT5-small fine-tune that takes the raw code (no prompt)
-and generates with beam search (4 beams). It is separate from the CodeT5 LoRA explainer
+and generates through `src/summarization/summarize.py` with the settings chosen there on
+validation (4 beams, length penalty 2.0; the test table below used the default length
+penalty, so API outputs can differ slightly). It is separate from the CodeT5 LoRA explainer
 and describes what a function does, not whether it is buggy. It leans on function names:
 for `def add(a, b): return a - b` it still says "Add two elements". Early spot checks
 were mixed: `def add(a, b): return a + b` gave "Add a new value to a list", while
