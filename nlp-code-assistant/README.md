@@ -370,6 +370,8 @@ seed-42 model of the new configuration):
 | Exact fix in top 3 | **92.3%** | 86.9% | 78.6% |
 | Correct line ranked first | **86.2%** | 78.1% | — |
 
+The CodeBERT–TF-IDF top-1 gap is significant (paired McNemar test: CodeBERT alone right on
+112 mutants, TF-IDF alone on 38, exact p = 1.2 × 10⁻⁹; `src/evaluation/localization_compare.py`).
 When CodeBERT flags a function as BUGGY (529 of 711), its first candidate is the exact fix
 86.2% of the time. The true fix is always among the candidates here because the bugs come from
 the same mutation tables; `<=` and `>=` never get candidates. `/analyze` returns the top

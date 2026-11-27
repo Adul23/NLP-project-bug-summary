@@ -24,9 +24,8 @@ and records where the true fix lands in the ranking.
 ## Results (711 test mutants)
 
 CodeBERT is the seed-42 model of the new training configuration (batch 16, fp16, 5 epochs).
-TF-IDF is `models/tfidf_v2`. TF-IDF numbers: `results/localization/tfidf_summary.json`.
-CodeBERT numbers come from the Colab run (`codebert_summary.json`, not yet copied into
-`results/localization/`).
+TF-IDF is `models/tfidf_v2`. Numbers: `results/localization/{codebert,tfidf}_summary.json`
+(CodeBERT from a Colab T4 run).
 
 | | CodeBERT | TF-IDF | Random choice |
 |---|---:|---:|---:|
@@ -52,11 +51,27 @@ Split by whether the classifier itself flagged the function as BUGGY (threshold 
 | TF-IDF, flagged BUGGY | 480 | 62.1% | 71.5% | 39.9% | 6.1 |
 | TF-IDF, missed | 231 | 79.7% | 91.8% | 67.5% | 2.2 |
 
+## CodeBERT vs TF-IDF: McNemar test
+
+Both models are scored on the same 711 mutants, so the comparison is paired
+(`src/evaluation/localization_compare.py`, output `results/localization/comparison.json`).
+Only the mutants where exactly one model is right count:
+
+| Metric | CodeBERT | TF-IDF | Only CodeBERT right | Only TF-IDF right | Exact McNemar p |
+|---|---:|---:|---:|---:|---:|
+| top-1 | 78.2% | 67.8% | 112 | 38 | 1.2 × 10⁻⁹ |
+| top-3 | 92.3% | 86.9% | 59 | 21 | 2.5 × 10⁻⁵ |
+| Correct line first | 86.2% | 78.1% | 89 | 31 | 1.1 × 10⁻⁷ |
+
+The top-1 difference is not noise: CodeBERT alone finds the fix on 112 mutants, TF-IDF alone on
+38 (both right on 444, both wrong on 117). top-1 is the pre-planned test; top-3 and line are
+shown for reference.
+
 ## Conclusions
 
 - Both classifiers localize far better than chance; CodeBERT is about 10 points ahead of
-  TF-IDF in top-1 (78.2% vs 67.8%) and correct-line accuracy (86.2% vs 78.1%), and ahead for
-  every mutation type.
+  TF-IDF in top-1 (78.2% vs 67.8%, McNemar p = 1.2 × 10⁻⁹) and correct-line accuracy
+  (86.2% vs 78.1%), and ahead for every mutation type.
 - When CodeBERT flags a function, its top repair is the exact fix 86.2% of the time and is on
   the right line 90.7% of the time, so the suggested fix is most useful exactly when it is shown.
 - Even on functions it missed, CodeBERT's ranking is informative (54.9% vs 34.1% random).
@@ -89,4 +104,8 @@ python -m src.evaluation.localization_eval --model codebert --model-dir models/c
 ```
 
 Outputs: `results/localization/<model>_rows.csv` (one row per mutant) and
-`results/localization/<model>_summary.json`.
+`results/localization/<model>_summary.json`. Then, on the laptop:
+
+```bash
+OMP_NUM_THREADS=2 python -m src.evaluation.localization_compare   # -> comparison.json
+```

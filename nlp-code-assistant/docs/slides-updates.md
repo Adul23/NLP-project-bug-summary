@@ -46,6 +46,9 @@ Title: **Where is the bug? Localization without reference code**
 Optional line: *When CodeBERT flags a function as buggy, its first repair is the exact fix
 86.2% of the time (correct line 90.7%).*
 
+Under the table: *CodeBERT vs TF-IDF top-1: McNemar p = 1.2 × 10⁻⁹ (CodeBERT alone right on
+112 mutants, TF-IDF alone on 38).*
+
 ## 4. Product / API
 
 Replace the API slide text with:
