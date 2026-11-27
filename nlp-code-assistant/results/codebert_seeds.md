@@ -21,7 +21,9 @@ Conclusion: quality is unchanged (the old run is within the spread between seeds
 training is about 6 times faster. Precision and recall move more between seeds than F1:
 seed 13 trades precision for recall.
 
-Source: the three `metrics.json` files from the Colab runs. They are not in the repository
-yet; once copied to `results/codebert_seeds/<seed>/metrics.json`, this table should be
-regenerated from them. Recomputed from the rounded values above, the accuracy std is 0.008,
-so the 0.007 should be checked against the unrounded numbers.
+Source: `results/codebert_seeds/<seed>/metrics.json`, the test and validation metrics of the
+three Colab runs (their `split_manifest.seed` is the split seed, 42 for all; the training seed
+is the folder name). Unrounded test values: F1 0.7637 ± 0.0070, accuracy 0.8482 ± 0.0074,
+precision 0.7664 ± 0.0346, recall 0.7632 ± 0.0383, so the table above is correct (computing the
+std from the rounded per-seed accuracies gives 0.008 instead). False positives on test
+(clean functions flagged BUGGY, out of 1,500): 160, 211 and 131 for seeds 42, 13 and 7.
