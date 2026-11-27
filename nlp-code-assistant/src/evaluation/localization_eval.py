@@ -29,9 +29,14 @@ def evaluate(
     buggy = test[(test.label == 1) & test.source_id.isin(originals.index)]
     has_in_tables = "in_tables" in buggy.columns
     rows = []
+    skipped = 0
     for i, row in enumerate(buggy.itertuples(index=False), start=1):
         original = originals[row.source_id]
-        result = localize(row.code, predictor, top_k=None)  # full ranking
+        try:
+            result = localize(row.code, predictor, top_k=None)  # full ranking
+        except SyntaxError:  # only possible with external data (--data)
+            skipped += 1
+            continue
         codes = [c["code"] for c in result["candidates"]]
         rank = codes.index(original) + 1 if original in codes else None
         true_line = _changed_line(row.code, original)
@@ -53,7 +58,9 @@ def evaluate(
         if progress and i % 100 == 0:
             print(f"{i}/{len(buggy)}")
     frame = pd.DataFrame(rows)
-    return frame, summarize(frame)
+    summary = summarize(frame)
+    summary['skipped_unparsable'] = skipped
+    return frame, summary
 
 
 def _stats(frame: pd.DataFrame) -> dict:

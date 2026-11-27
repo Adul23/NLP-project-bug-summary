@@ -146,3 +146,15 @@ def test_iter_records_reads_zip_of_jsonl_gz(tmp_path):
     with zipfile.ZipFile(archive, "w") as z:
         z.writestr("ctssb_data_1M/file-0.jsonl.gz", payload)
     assert list(crb.iter_records(archive)) == records
+
+
+def test_method_with_column_zero_comment_is_dedented():
+    source = (
+        'class A:\n'
+        '    def f(self, x):\n'
+        '#       commented out at column 0\n'
+        '        return x < 1\n'
+    )
+    code = crb.functions(source)['A.f'][1]
+    assert code.startswith('def f(self, x):\n')
+    crb._parse(code)  # textwrap.dedent would leave it indented and unparsable

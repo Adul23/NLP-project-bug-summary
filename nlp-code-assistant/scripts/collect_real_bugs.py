@@ -30,7 +30,6 @@ import json
 import random
 import re
 import sys
-import textwrap
 import time
 import tokenize
 import urllib.error
@@ -166,6 +165,17 @@ def _parse(source: str):
         return ast.parse(source)
 
 
+def dedent_function(lines, width: int) -> str:
+    # Remove up to `width` leading whitespace characters from every line.
+    # textwrap.dedent gives up when a comment inside the function starts at a smaller
+    # indentation (e.g. column 0); Python accepts such comments, so keep them as they are.
+    out = []
+    for line in lines:
+        removed = len(line) - len(line.lstrip(' \t'))
+        out.append(line[min(removed, width):])
+    return ''.join(out)
+
+
 def functions(source: str) -> dict[str, tuple[ast.AST, str]]:
     """Module-level functions and methods (any class depth): qualname -> (node, dedented code)."""
     lines = source.splitlines(keepends=True)
@@ -174,7 +184,7 @@ def functions(source: str) -> dict[str, tuple[ast.AST, str]]:
     def visit(body, prefix):
         for node in body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                code = textwrap.dedent("".join(lines[node.lineno - 1 : node.end_lineno]))
+                code = dedent_function(lines[node.lineno - 1 : node.end_lineno], node.col_offset)
                 found[prefix + node.name] = (node, code)
             elif isinstance(node, ast.ClassDef):
                 visit(node.body, f"{prefix}{node.name}.")
