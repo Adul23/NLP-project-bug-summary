@@ -647,9 +647,9 @@ classifiers are near chance (see [Real bugs](#real-bugs)). Near-duplicate check
 (`scripts/near_duplicates.py`, [`results/near_duplicates.json`](results/near_duplicates.json)):
 no clean validation or test function has a train function with TF-IDF cosine similarity
 ≥ 0.95, but 112 of 1,500 validation and 137 of 1,500 test functions reach ≥ 0.8 (17 and 14
-reach ≥ 0.9). The closest pairs (0.945, 0.940) are sibling methods with identical bodies
-apart from one call (`is_char_device` / `is_block_device`, `symmetric_difference` / `without`):
-the split separates functions, not repositories. Dataset sampling, repository overlap and semantic clones limit generalization,
+reach ≥ 0.9). The closest pairs (0.945, 0.940) are sibling methods of one class in one
+repository with identical bodies apart from one call (`is_char_device` / `is_block_device`,
+`symmetric_difference` / `without`): the split separates functions, not repositories. Dataset sampling, repository overlap and semantic clones limit generalization,
 and CodeBERT and CodeT5 were pretrained on CodeSearchNet, so they may have seen the test
 functions. Latencies were measured on different hardware (TF-IDF and CodeBERT on a laptop
 CPU, CodeT5 on an Apple M4) and are not directly comparable.
