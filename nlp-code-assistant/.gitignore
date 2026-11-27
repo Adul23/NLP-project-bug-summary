@@ -5,6 +5,7 @@ __pycache__/
 .cache/
 data/raw/**
 data/processed/**
+data/real_bugs/
 models/**
 !data/raw/.gitkeep
 !data/processed/.gitkeep

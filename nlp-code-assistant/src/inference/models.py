@@ -18,20 +18,26 @@ class TfidfPredictor:
         if list(self.model.classes_) != [0, 1]:
             raise ValueError("Artifact label mapping must be 0=CLEAN, 1=BUGGY")
 
+    def predict_batch(self, codes):
+        features = self.vectorizer.transform(codes)
+        probabilities = self.model.predict_proba(features)[:, 1]
+        labels = self.model.predict(features)
+        return [
+            {
+                "label": "BUGGY" if label else "CLEAN",
+                "bug_probability": float(p),
+                "confidence": float(p) if label else float(1 - p),
+                "model": "tfidf",
+            }
+            for p, label in zip(probabilities, labels)
+        ]
+
     def predict(self, code):
-        features = self.vectorizer.transform([code])
-        probability = float(self.model.predict_proba(features)[0, 1])
-        label = int(self.model.predict(features)[0])
-        return {
-            "label": "BUGGY" if label else "CLEAN",
-            "bug_probability": probability,
-            "confidence": probability if label else 1 - probability,
-            "model": "tfidf",
-        }
+        return self.predict_batch([code])[0]
 
 
 class LoraPredictor:
-    def __init__(self, folder, *, summarizer=False, device="cpu"):
+    def __init__(self, folder, *, summarizer=False, device="cpu", merge=True):
         import torch
         from peft import PeftModel
         from transformers import (
@@ -59,6 +65,7 @@ class LoraPredictor:
                 "num_labels": 2,
                 "id2label": {0: "CLEAN", 1: "BUGGY"},
                 "label2id": {"CLEAN": 0, "BUGGY": 1},
+                "attn_implementation": "sdpa",
             }
         )
         base = cls.from_pretrained(
@@ -67,35 +74,48 @@ class LoraPredictor:
             local_files_only=True,
             **kwargs,
         )
-        self.model = (
-            PeftModel.from_pretrained(base, folder / "adapter", local_files_only=True)
-            .to(device)
-            .eval()
+        model = PeftModel.from_pretrained(
+            base, folder / "adapter", local_files_only=True
         )
+        if merge:
+            model = (
+                model.merge_and_unload()
+            )  # LoRA вливается в веса, обученная голова classifier остаётся
+        self.model = model.to(device).eval()
         self.torch = torch
 
-    def predict(self, code):
+    def predict_batch(self, codes, batch_size=16):
         if self.summarizer:
             raise ValueError("Use generate for a summarizer")
-        inputs = self.tokenizer(
-            code,
-            return_tensors="pt",
-            truncation=True,
-            max_length=self.config["max_length"],
-            return_token_type_ids=False,
-        ).to(self.model.device)
-        with self.torch.inference_mode():
-            probabilities = self.model(**inputs).logits.softmax(-1)[0]
-        p = float(probabilities[1])
-        # A threshold tuned on validation (train_lora --threshold-tune) replaces argmax if stored.
         threshold = self.config.get("decision_threshold")
-        label = int(probabilities.argmax()) if threshold is None else int(p >= threshold)
-        return {
-            "label": "BUGGY" if label else "CLEAN",
-            "bug_probability": p,
-            "confidence": p if label else 1 - p,
-            "model": "codebert",
-        }
+        results = []
+        for start in range(0, len(codes), batch_size):
+            inputs = self.tokenizer(
+                codes[start : start + batch_size],
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=self.config["max_length"],
+                return_token_type_ids=False,
+            ).to(self.model.device)
+            with self.torch.inference_mode():
+                probabilities = self.model(**inputs).logits.softmax(-1)
+            for row in probabilities:
+                p = float(row[1])
+                # Порог, подобранный на validation, если сохранён; иначе argmax.
+                label = int(row.argmax()) if threshold is None else int(p >= threshold)
+                results.append(
+                    {
+                        "label": "BUGGY" if label else "CLEAN",
+                        "bug_probability": p,
+                        "confidence": p if label else 1 - p,
+                        "model": "codebert",
+                    }
+                )
+        return results
+
+    def predict(self, code):
+        return self.predict_batch([code])[0]
 
     def generate(self, code):
         if not self.summarizer:
@@ -117,4 +137,59 @@ class LoraPredictor:
             "verified": False,
             "bug_type": None,
             "suggested_fix": None,
+        }
+
+
+class CodeSummarizer:
+    """Fully fine-tuned CodeT5-small (src/summarization/train_codet5.py).
+
+    Produces a one-sentence, docstring-style summary of what a function does. This is a
+    separate model from the CodeT5 LoRA explainer (LoraPredictor with summarizer=True).
+    Input is the raw code with no prompt prefix, exactly as in training.
+    """
+
+    DEFAULT_MAX_LENGTH = 384
+    DEFAULT_MAX_TARGET = 48
+
+    def __init__(self, folder, *, device="cpu"):
+        folder = Path(folder)
+        best = folder / "best"
+        # Fail before importing torch/transformers when nothing has been trained.
+        for name in ("config.json", "model.safetensors"):
+            if not (best / name).exists():
+                raise FileNotFoundError(f"Missing {best / name}")
+        import torch
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        summary_path = folder / "training_summary.json"
+        summary = json.loads(summary_path.read_text()) if summary_path.exists() else {}
+        self.max_length = int(summary.get("max_length", self.DEFAULT_MAX_LENGTH))
+        self.max_target = int(summary.get("max_target", self.DEFAULT_MAX_TARGET))
+        self.tokenizer = AutoTokenizer.from_pretrained(best, local_files_only=True)
+        self.model = (
+            AutoModelForSeq2SeqLM.from_pretrained(best, local_files_only=True)
+            .to(device)
+            .eval()
+        )
+        self.torch = torch
+
+    def summarize(self, code):
+        inputs = self.tokenizer(
+            code,
+            return_tensors="pt",
+            truncation=True,
+            max_length=self.max_length,
+        ).to(self.model.device)
+        with self.torch.inference_mode():
+            ids = self.model.generate(
+                **inputs,
+                num_beams=4,
+                max_new_tokens=self.max_target,
+                early_stopping=True,
+                do_sample=False,
+            )
+        return {
+            "summary": self.tokenizer.decode(ids[0], skip_special_tokens=True).strip(),
+            "summary_source": "codet5_finetuned",
+            "model": "codet5_summarizer",
         }

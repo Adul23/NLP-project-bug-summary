@@ -1,0 +1,85 @@
+{
+  "all": {
+    "n": 500,
+    "top1": 0.26,
+    "top3": 0.478,
+    "line_top1": 0.5,
+    "true_fix_missing": 159,
+    "mean_candidates": 8.872,
+    "random_top1": 0.320578833946952,
+    "random_top3": 0.5937365018408561
+  },
+  "by_mutation_type": {
+    "arithmetic_operator": {
+      "n": 58,
+      "top1": 0.27586206896551724,
+      "top3": 0.5517241379310345,
+      "line_top1": 0.4482758620689655,
+      "true_fix_missing": 6,
+      "mean_candidates": 12.051724137931034,
+      "random_top1": 0.24050823714560238,
+      "random_top3": 0.5146281597126692
+    },
+    "boolean_operator": {
+      "n": 72,
+      "top1": 0.2638888888888889,
+      "top3": 0.6388888888888888,
+      "line_top1": 0.5972222222222222,
+      "true_fix_missing": 0,
+      "mean_candidates": 9.13888888888889,
+      "random_top1": 0.29983285376894236,
+      "random_top3": 0.6425541168623826
+    },
+    "comparison_operator": {
+      "n": 370,
+      "top1": 0.25675675675675674,
+      "top3": 0.43513513513513513,
+      "line_top1": 0.4891891891891892,
+      "true_fix_missing": 153,
+      "mean_candidates": 8.321621621621622,
+      "random_top1": 0.3371674966153168,
+      "random_top3": 0.5966376249810856
+    }
+  },
+  "classifier_detected": {
+    "n": 349,
+    "top1": 0.2148997134670487,
+    "top3": 0.4469914040114613,
+    "line_top1": 0.4154727793696275,
+    "true_fix_missing": 104,
+    "mean_candidates": 11.312320916905444,
+    "random_top1": 0.2348988216009965,
+    "random_top3": 0.5170173817084336
+  },
+  "classifier_missed": {
+    "n": 151,
+    "top1": 0.36423841059602646,
+    "top3": 0.5496688741721855,
+    "line_top1": 0.695364238410596,
+    "true_fix_missing": 55,
+    "mean_candidates": 3.2317880794701987,
+    "random_top1": 0.5186074717531671,
+    "random_top3": 0.7710542033389716
+  },
+  "in_tables": {
+    "n": 344,
+    "top1": 0.37790697674418605,
+    "top3": 0.6947674418604651,
+    "line_top1": 0.5843023255813954,
+    "true_fix_missing": 3,
+    "mean_candidates": 8.98546511627907,
+    "random_top1": 0.28485601794994314,
+    "random_top3": 0.6132889840823875
+  },
+  "not_in_tables": {
+    "n": 156,
+    "top1": 0.0,
+    "top3": 0.0,
+    "line_top1": 0.3141025641025641,
+    "true_fix_missing": 156,
+    "mean_candidates": 8.621794871794872,
+    "random_top1": 0.39935222306856144,
+    "random_top3": 0.5506207717697866
+  },
+  "skipped_unparsable": 0
+}

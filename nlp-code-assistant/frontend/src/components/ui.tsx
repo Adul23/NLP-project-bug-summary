@@ -35,6 +35,55 @@ export function ErrorNote({ message }: { message: string }) {
   );
 }
 
+export function Toggle({
+  label,
+  checked,
+  disabled,
+  tooltip,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  tooltip?: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <span className="group relative inline-flex" title={tooltip}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={disabled}
+        onClick={() => onChange(!checked)}
+        className="inline-flex items-center gap-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <span
+          aria-hidden
+          className={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${
+            checked ? "border-accent bg-accent" : "border-line bg-subtle"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-surface shadow-[0_0_0_1px_rgb(var(--line))] transition-[left] ${
+              checked ? "left-[18px]" : "left-0.5"
+            }`}
+          />
+        </span>
+        {label}
+      </button>
+      {tooltip && disabled && (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[240px] rounded border border-line bg-surface px-2 py-1 text-xs text-fg group-hover:block"
+        >
+          {tooltip}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export interface SegmentOption<T extends string> {
   value: T;
   label: string;

@@ -3,6 +3,7 @@
 import json
 import os
 import threading
+import tokenize
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,8 +12,9 @@ from typing import Literal
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from src.bug_detection import retrain_from_feedback
+from src.bug_detection.localize import localize
 from src.bug_detection.split_dataset import ROOT
-from src.inference.models import LoraPredictor, TfidfPredictor
+from src.inference.models import CodeSummarizer, LoraPredictor, TfidfPredictor
 from src.summarization.prepare import verified_change
 from starlette.responses import JSONResponse
 
@@ -73,6 +75,19 @@ class PredictionRequest(BaseModel):
 class AnalysisRequest(PredictionRequest):
     original_code: str | None = Field(default=None, min_length=1, max_length=20_000)
     explanation: Literal["deterministic", "lora"] = "deterministic"
+    summarize: bool = False
+
+
+class SummaryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    code: str = Field(min_length=1, max_length=20_000)
+
+    @field_validator("code")
+    @classmethod
+    def nonblank(cls, value):
+        if not value.strip():
+            raise ValueError("Code must not be blank")
+        return value
 
 
 class FeedbackRequest(BaseModel):
@@ -98,6 +113,40 @@ class RetrainRequest(BaseModel):
     mistakes_only: bool = False
 
 
+def localized_explanation(code: str, predictor) -> dict:
+    """Unverified explanation from operator-flip localization (no reference code).
+
+    The first candidate counts only if flipping it lowers the bug probability; code
+    that does not parse gets no explanation instead of an error.
+    """
+    try:
+        found = localize(code, predictor)
+    except (SyntaxError, ValueError, tokenize.TokenError):
+        return {}
+    candidates = [c for c in found["candidates"] if c["drop"] > 0]
+    if not candidates:
+        return {}
+    best = candidates[0]
+    return {
+        "bug_type": best["mutation_type"],
+        "explanation": f"Line {best['line']}: `{best['old']}` may be `{best['new']}`",
+        "suggested_fix": best["code"],
+        "suspected_line": best["line"],
+        "explanation_source": "operator_flip",
+        "verified": False,
+        "repair_candidates": [
+            {
+                "line": c["line"],
+                "old": c["old"],
+                "new": c["new"],
+                "mutation_type": c["mutation_type"],
+                "drop": round(float(c["drop"]), 4),
+            }
+            for c in candidates
+        ],
+    }
+
+
 def create_app(model_root=None, feedback_dir=None):
     root = Path(model_root or os.environ.get("BUG_MODEL_ROOT", ROOT / "models"))
     fb_root = Path(
@@ -115,7 +164,8 @@ def create_app(model_root=None, feedback_dir=None):
         "tfidf": root / "tfidf_v2",
         # models/codebert_lora_active.json (written by accepted retrains) selects the adapter.
         "codebert": retrain_from_feedback.read_active_dir(root),
-        "summarizer": root / "codet5_lora",
+        "summarizer": root / "codet5_lora",  # LoRA explainer ("explanation": "lora")
+        "code_summarizer": root / "codet5_summarizer",  # full CodeT5 fine-tune (/summarize)
     }
     cache, failures = {}, {}
     lock = threading.Lock()
@@ -158,13 +208,14 @@ def create_app(model_root=None, feedback_dir=None):
         with lock:
             if name not in cache:
                 try:
-                    cache[name] = (
-                        TfidfPredictor(directories[name])
-                        if name == "tfidf"
-                        else LoraPredictor(
+                    if name == "tfidf":
+                        cache[name] = TfidfPredictor(directories[name])
+                    elif name == "code_summarizer":
+                        cache[name] = CodeSummarizer(directories[name])
+                    else:
+                        cache[name] = LoraPredictor(
                             directories[name], summarizer=name == "summarizer"
                         )
-                    )
                     failures.pop(name, None)
                 except (
                     OSError,
@@ -182,34 +233,30 @@ def create_app(model_root=None, feedback_dir=None):
                     ) from exc
             return cache[name]
 
+    def artifacts_present(name, folder):
+        if name == "tfidf":
+            required = ["logistic_regression.joblib", "tfidf_vectorizer.joblib"]
+        elif name == "code_summarizer":
+            required = ["best/config.json", "best/model.safetensors"]
+        else:
+            required = ["training_config.json", "adapter/adapter_config.json"]
+        return all((folder / path).exists() for path in required)
+
+    def status(name, folder):
+        if name in cache:
+            return "loaded"
+        if name in failures:
+            return "load_failed"
+        if artifacts_present(name, folder):
+            return "artifacts_present_not_loaded"
+        return "unavailable"
+
     @api.get("/health")
     def health():
         return {
             "status": "ok",
             "models": {
-                name: {
-                    "status": (
-                        "loaded"
-                        if name in cache
-                        else (
-                            "load_failed"
-                            if name in failures
-                            else (
-                                "artifacts_present_not_loaded"
-                                if (
-                                    (folder / "logistic_regression.joblib").exists()
-                                    and (folder / "tfidf_vectorizer.joblib").exists()
-                                    if name == "tfidf"
-                                    else (folder / "training_config.json").exists()
-                                    and (
-                                        folder / "adapter/adapter_config.json"
-                                    ).exists()
-                                )
-                                else "unavailable"
-                            )
-                        )
-                    ),
-                }
+                name: {"status": status(name, folder)}
                 for name, folder in directories.items()
             },
         }
@@ -228,7 +275,8 @@ def create_app(model_root=None, feedback_dir=None):
                 change = verified_change(request.original_code, request.code)
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from exc
-        prediction = load(request.model).predict(request.code)
+        predictor = load(request.model)
+        prediction = predictor.predict(request.code)
         log_if_uncertain(request.code, request.model, prediction)
         result = {
             **prediction,
@@ -248,7 +296,25 @@ def create_app(model_root=None, feedback_dir=None):
             )
         elif request.explanation == "lora":
             result.update(load("summarizer").generate(request.code))
+        elif prediction["bug_probability"] >= UNCERTAINTY_LOW:
+            result.update(localized_explanation(request.code, predictor))
+        if request.summarize:
+            # The summary is optional extra context: never fail the analysis over it.
+            try:
+                summary = load("code_summarizer").summarize(request.code)
+                result.update(
+                    summary=summary["summary"], summary_source=summary["summary_source"]
+                )
+            except (HTTPException, OSError, ValueError, RuntimeError):
+                result.update(summary=None, summary_source="unavailable")
         return result
+
+    @api.post("/summarize")
+    def summarize(request: SummaryRequest):
+        try:
+            return load("code_summarizer").summarize(request.code)
+        except (OSError, ValueError, RuntimeError) as exc:
+            raise HTTPException(503, "code_summarizer failed to generate a summary") from exc
 
     @api.get("/feedback")
     def get_feedback_stats():

@@ -31,6 +31,7 @@ DEFAULTS = {
     "lora_targets": "qv",
     "lora_r": 8,
     "threshold_tune": False,
+    "seed": 42,
 }
 
 
@@ -63,7 +64,7 @@ def train(args):
                 "Hint: --batch-size 1 on CUDA is slow; try --batch-size 16 --accumulation 1 "
                 "(or 8 with --accumulation 2 if memory is tight)."
             )
-    set_seed(42)
+    set_seed(args.seed)
     (training, validation, test), manifest = load_splits(args.split_dir)
     output = require_empty(args.output)
     tokenizer = AutoTokenizer.from_pretrained(args.base_model, revision=args.revision)
@@ -102,8 +103,8 @@ def train(args):
         metric_for_best_model="bug_f1",
         greater_is_better=True,
         save_total_limit=1,
-        seed=42,
-        data_seed=42,
+        seed=args.seed,
+        data_seed=args.seed,
         report_to="none",
         group_by_length=True,  # batches of similar length waste far less padding
         gradient_checkpointing=args.gradient_checkpointing,
@@ -173,6 +174,17 @@ def train(args):
             final.label_ids,
             (softmax_bug_probability(final.predictions) >= threshold).astype(int),
         )
+    # McNemar, bootstrap
+    test_probability = softmax_bug_probability(final.predictions)
+    test_predicted = (
+        final.predictions.argmax(-1)
+        if threshold is None
+        else (test_probability >= threshold).astype(int)
+    )
+    test[["sample_id", "source_id", "label", "mutation_type"]].assign(
+        predicted_label=test_predicted, bug_probability=test_probability
+    ).to_csv(output / "test_predictions.csv", index=False)
+
     model.save_pretrained(output / "adapter")
     tokenizer.save_pretrained(output / "adapter")
     metadata = {
@@ -182,7 +194,7 @@ def train(args):
         "targets": targets,
         "head": "classifier",
         "split_manifest": manifest,
-        "seed": 42,
+        "seed": args.seed,
         "epochs": args.epochs,
         "device": str(trainer.args.device),
         "truncation_fraction": truncation,
@@ -235,6 +247,7 @@ def main():
         help="auto: bf16 if the GPU supports it natively, else fp16 on CUDA, fp32 on CPU",
     )
     p.add_argument("--epochs", type=int, default=5)
+    p.add_argument("--seed", type=int, default=42)
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--eval-batch-size", type=int, default=64)
     p.add_argument("--accumulation", type=int, default=1)

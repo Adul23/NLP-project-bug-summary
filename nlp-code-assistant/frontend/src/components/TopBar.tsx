@@ -21,7 +21,7 @@ export function StatusDot({ status }: { status: ModelStatus | "offline" }) {
   return <span className={`h-2 w-2 shrink-0 rounded-full ${status === "offline" ? "bg-muted/40" : DOT[status]}`} />;
 }
 
-const COMPONENTS: ComponentName[] = ["tfidf", "codebert", "summarizer"];
+const COMPONENTS: ComponentName[] = ["tfidf", "codebert", "code_summarizer", "summarizer"];
 
 function StatusPills({ health, error }: { health: HealthResponse | null; error: string | null }) {
   return (

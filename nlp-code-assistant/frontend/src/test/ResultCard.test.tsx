@@ -56,6 +56,26 @@ describe("ResultCard", () => {
     expect(screen.queryByText(/Uncertain zone/)).not.toBeInTheDocument();
   });
 
+  it("shows an unverified operator-flip fix", () => {
+    renderCard({
+      run: makeRun({
+        bug_type: "arithmetic_operator",
+        explanation: "Line 2: `-` may be `+`",
+        suggested_fix: "def f(a, b):\n    return a + b\n",
+        explanation_source: "operator_flip",
+        verified: false,
+        suspected_line: 2,
+        repair_candidates: [{ line: 2, old: "-", new: "+", mutation_type: "arithmetic_operator", drop: 0.61 }],
+      }),
+      loading: false,
+      error: null,
+    });
+    expect(screen.getByText("Not verified")).toBeInTheDocument();
+    expect(screen.queryByText("Verified")).not.toBeInTheDocument();
+    expect(screen.getByTestId("possible-fix")).toHaveTextContent("Possible fix: line 2, - → +");
+    expect(screen.getByText("Line 2: `-` may be `+`")).toBeInTheDocument();
+  });
+
   it("renders the CLEAN state", () => {
     renderCard({
       run: makeRun({ label: "CLEAN", is_buggy: false, bug_probability: 0.12, confidence: 0.88 }),
